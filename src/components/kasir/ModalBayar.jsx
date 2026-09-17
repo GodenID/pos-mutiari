@@ -137,7 +137,7 @@ export default function ModalBayar({ buka, tutup, hitungan, onSelesai }) {
       )
     })
 
-  const kirim = () => {
+  const kirim = async () => {
     if (belumBisaKirim) return
     let idPlg = pelangganId
     let namaPlg = pelangganTerpilih?.nama || ''
@@ -150,14 +150,19 @@ export default function ModalBayar({ buka, tutup, hitungan, onSelesai }) {
         idPlg = cocok.id
         namaPlg = cocok.nama
       } else {
-        const baru = aksi.tambahPelanggan({
-          nama: cariPlg.trim(),
-          telepon: telpBaru.trim(),
-        })
-        if (baru) {
-          idPlg = baru.id
-          namaPlg = baru.nama
-        } else {
+        try {
+          const baru = await aksi.tambahPelanggan({
+            nama: cariPlg.trim(),
+            telepon: telpBaru.trim(),
+          })
+          if (baru) {
+            idPlg = baru.id
+            namaPlg = baru.nama
+          } else {
+            namaPlg = cariPlg.trim()
+          }
+        } catch {
+          // Gagal simpan master — server tetap bentuk otomatis dari nama
           namaPlg = cariPlg.trim()
         }
       }

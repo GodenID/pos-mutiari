@@ -7,6 +7,7 @@ import { serve } from '@hono/node-server'
 import authRoute from './routes/auth.js'
 import produkRoute from './routes/produk.js'
 import kategoriRoute from './routes/kategori.js'
+import satuanRoute from './routes/satuan.js'
 import pelangganRoute from './routes/pelanggan.js'
 import supplierRoute from './routes/supplier.js'
 import transaksiRoute from './routes/transaksi.js'
@@ -15,6 +16,8 @@ import mutasiRoute from './routes/mutasi.js'
 import penggunaRoute from './routes/pengguna.js'
 import pengaturanRoute from './routes/pengaturan.js'
 import ringkasanRoute from './routes/ringkasan.js'
+import uploadRoute from './routes/upload.js'
+import adminRoute from './routes/admin.js'
 
 const app = new Hono()
 
@@ -41,6 +44,7 @@ app.get('/health', (c) => c.json({ ok: true }))
 app.route('/api/auth', authRoute)
 app.route('/api/produk', produkRoute)
 app.route('/api/kategori', kategoriRoute)
+app.route('/api/satuan', satuanRoute)
 app.route('/api/pelanggan', pelangganRoute)
 app.route('/api/supplier', supplierRoute)
 app.route('/api/transaksi', transaksiRoute)
@@ -49,6 +53,8 @@ app.route('/api/mutasi', mutasiRoute)
 app.route('/api/pengguna', penggunaRoute)
 app.route('/api/pengaturan', pengaturanRoute)
 app.route('/api/ringkasan', ringkasanRoute)
+app.route('/api/upload', uploadRoute)
+app.route('/api/admin', adminRoute)
 
 app.notFound((c) => c.json({ error: 'Tidak ditemukan' }, 404))
 app.onError((err, c) => {

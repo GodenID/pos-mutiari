@@ -12,6 +12,11 @@ model Category {
   nama  String @unique
 }
 
+model Unit {
+  id   String @id @default(cuid())
+  nama String @unique
+}
+
 model Product {
   id        String   @id @default(cuid())
   sku       String   @unique
@@ -23,6 +28,8 @@ model Product {
   stok      Int      @default(0)
   stokMin   Int      @default(0)
   aktif     Boolean  @default(true)
+  gambarUrl String   @default("")
+  gambarKey String   @default("")
   updatedAt DateTime @updatedAt
 
   @@index([nama])

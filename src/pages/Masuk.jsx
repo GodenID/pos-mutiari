@@ -197,7 +197,7 @@ export default function Masuk() {
             di Pengaturan → Pengguna setelah masuk.
           </p>
         </form>
-        <p className="masuk-kaki xs tersier">Data tersimpan lokal di perangkat ini.</p>
+        <p className="masuk-kaki xs tersier">Tersambung ke server toko — data tersimpan terpusat.</p>
       </div>
     </div>
   )

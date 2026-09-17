@@ -335,7 +335,13 @@ function TabPembelian() {
         buka={formBuka}
         tutup={() => setFormBuka(false)}
         onSimpan={async (data) => {
-          const po = aksi.simpanPembelian(data)
+          let po = null
+          try {
+            po = await aksi.simpanPembelian(data)
+          } catch (e) {
+            toast.galat(e?.message || 'Gagal menyimpan pembelian')
+            return
+          }
           if (po) {
             const sup = supplier.find((s) => s.id === po.supplierId) || null
             try {
@@ -650,19 +656,23 @@ function TabSupplier() {
     setModal(true)
   }
 
-  function simpan() {
+  async function simpan() {
     const g = {}
     if (!form.nama.trim()) g.nama = 'Nama supplier wajib diisi'
     setGalat(g)
     if (Object.keys(g).length) return
-    if (sedangUbah) {
-      aksi.ubahSupplier(sedangUbah.id, form)
-      toast.sukses('Supplier diperbarui')
-    } else {
-      aksi.tambahSupplier(form)
-      toast.sukses(`Supplier "${form.nama.trim()}" ditambahkan`)
+    try {
+      if (sedangUbah) {
+        await aksi.ubahSupplier(sedangUbah.id, form)
+        toast.sukses('Supplier diperbarui')
+      } else {
+        await aksi.tambahSupplier(form)
+        toast.sukses(`Supplier "${form.nama.trim()}" ditambahkan`)
+      }
+      setModal(false)
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menyimpan supplier')
     }
-    setModal(false)
   }
 
   return (
@@ -814,9 +824,14 @@ function TabSupplier() {
         bahaya
         labelSetuju="Hapus supplier"
         pesan={`"${akanHapus?.nama}" akan dihapus dari master. Riwayat PO yang sudah tercatat tetap tersimpan.`}
-        onSetuju={() => {
-          aksi.hapusSupplier(akanHapus.id)
-          toast.info(`Supplier "${akanHapus.nama}" dihapus`)
+        onSetuju={async () => {
+          try {
+            await aksi.hapusSupplier(akanHapus.id)
+            toast.info(`Supplier "${akanHapus.nama}" dihapus`)
+          } catch (e) {
+            toast.galat(e?.message || 'Gagal menghapus supplier')
+          }
+          setAkanHapus(null)
         }}
       />
     </>

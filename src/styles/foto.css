@@ -1,0 +1,78 @@
+/* Foto produk + status koneksi server.
+   Semua gambar dibuat responsif: tidak pernah melebar melebihi wadahnya. */
+
+.produk-thumb {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: var(--bg, #f5f5f4);
+}
+
+.kasir-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg, #f5f5f4);
+  display: block;
+}
+
+.foto-pemilih {
+  width: 100%;
+}
+
+.foto-pratinjau {
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg, #f5f5f4);
+  display: block;
+}
+
+.foto-pilih {
+  height: 44px;
+  width: 100%;
+  max-width: 260px;
+}
+
+@media (max-width: 640px) {
+  .produk-thumb {
+    width: 34px;
+    height: 34px;
+    border-radius: 7px;
+  }
+
+  .foto-pratinjau,
+  .foto-pilih {
+    max-width: 100%;
+  }
+}
+
+/* Layar tunggu / galat koneksi server */
+
+.memuat-layar {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.memuat-kartu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 28px 32px;
+  max-width: 360px;
+}

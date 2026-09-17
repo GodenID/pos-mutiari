@@ -208,17 +208,21 @@ export default function Kasir() {
     }
   }
 
-  function selesaikan(dataBayar) {
-    const trx = aksi.simpanTransaksi({
-      item: keranjang,
-      diskonNota,
-      pajakPersen,
-      ...dataBayar,
-    })
-    setTrxSelesai(trx)
-    setModal('struk')
-    bersihkanKeranjang()
-    setSheetBuka(false)
+  async function selesaikan(dataBayar) {
+    try {
+      const trx = await aksi.simpanTransaksi({
+        item: keranjang,
+        diskonNota,
+        pajakPersen,
+        ...dataBayar,
+      })
+      setTrxSelesai(trx)
+      setModal('struk')
+      bersihkanKeranjang()
+      setSheetBuka(false)
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menyimpan transaksi')
+    }
   }
 
   /* -------------------------- Pintasan tuts -------------------------- */
@@ -361,6 +365,14 @@ export default function Kasir() {
                   >
                     {diKeranjang ? (
                       <span className="produk-hitung">{angka(diKeranjang)}</span>
+                    ) : null}
+                    {p.gambarUrl ? (
+                      <img
+                        src={p.gambarUrl}
+                        alt=""
+                        loading="lazy"
+                        className="kasir-thumb"
+                      />
                     ) : null}
                     <span className="produk-kat trunc">{p.kategori}</span>
                     <span className="produk-nama clamp2">{p.nama}</span>

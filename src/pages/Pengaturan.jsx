@@ -48,17 +48,21 @@ export default function Pengaturan() {
 
   const ubah = (kunci) => (nilai) => setForm((f) => ({ ...f, [kunci]: nilai }))
 
-  const simpan = () => {
+  const simpan = async () => {
     if (!form.namaToko.trim()) {
       toast.galat('Nama toko tidak boleh kosong')
       return
     }
-    aksi.simpanPengaturan({
-      ...form,
-      namaToko: form.namaToko.trim(),
-      pajakPersen: Number(form.pajakPersen) || 0,
-    })
-    toast.sukses('Pengaturan disimpan')
+    try {
+      await aksi.simpanPengaturan({
+        ...form,
+        namaToko: form.namaToko.trim(),
+        pajakPersen: Number(form.pajakPersen) || 0,
+      })
+      toast.sukses('Pengaturan disimpan')
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menyimpan pengaturan')
+    }
   }
 
   /* Contoh transaksi untuk pratinjau struk */
@@ -448,7 +452,9 @@ export default function Pengaturan() {
             [integrasiAktif]: nilai,
           }
           setForm((f) => ({ ...f, integrasi: baru }))
-          aksi.simpanPengaturan({ ...form, integrasi: baru })
+          aksi.simpanPengaturan({ ...form, integrasi: baru }).catch((e) => {
+            toast.galat(e?.message || 'Gagal menyimpan konfigurasi')
+          })
           toast.sukses('Konfigurasi integrasi disimpan')
           setIntegrasiAktif(null)
         }}
@@ -458,7 +464,7 @@ export default function Pengaturan() {
             [integrasiAktif]: { ...PENGATURAN_AWAL.integrasi[integrasiAktif] },
           }
           setForm((f) => ({ ...f, integrasi: baru }))
-          aksi.simpanPengaturan({ ...form, integrasi: baru })
+          aksi.simpanPengaturan({ ...form, integrasi: baru }).catch(() => null)
           toast.info('Koneksi integrasi diputus')
           setIntegrasiAktif(null)
         }}
@@ -469,12 +475,17 @@ export default function Pengaturan() {
         tutup={() => setKonfirmasi(null)}
         judul="Muat ulang data demo?"
         labelSetuju="Ya, muat data demo"
-        pesan="Semua produk, transaksi, dan mutasi saat ini akan diganti dengan data contoh (38 produk dan riwayat penjualan 70 hari). Tindakan ini tidak dapat dibatalkan."
+        pesan="Semua data saat ini akan diganti dengan data contoh (38 produk, kategori, satuan, supplier, pelanggan). Riwayat transaksi tidak ikut dibuat — dasbor mulai dari kosong. Tindakan ini tidak dapat dibatalkan."
         bahaya
-        onSetuju={() => {
-          aksi.muatDemo()
-          setForm(PENGATURAN_AWAL)
-          toast.sukses('Data demo dimuat ulang')
+        onSetuju={async () => {
+          try {
+            await aksi.muatDemo()
+            setForm(PENGATURAN_AWAL)
+            toast.sukses('Data demo dimuat ulang')
+          } catch (e) {
+            toast.galat(e?.message || 'Gagal memuat data demo')
+          }
+          setKonfirmasi(null)
         }}
       />
 
@@ -485,10 +496,15 @@ export default function Pengaturan() {
         labelSetuju="Ya, kosongkan"
         pesan="Seluruh produk, transaksi, dan riwayat mutasi akan dihapus permanen. Anda akan mulai dari toko kosong. Tindakan ini tidak dapat dibatalkan."
         bahaya
-        onSetuju={() => {
-          aksi.kosongkanData()
-          setForm(PENGATURAN_AWAL)
-          toast.info('Semua data dikosongkan')
+        onSetuju={async () => {
+          try {
+            await aksi.kosongkanData()
+            setForm(PENGATURAN_AWAL)
+            toast.info('Semua data dikosongkan')
+          } catch (e) {
+            toast.galat(e?.message || 'Gagal mengosongkan data')
+          }
+          setKonfirmasi(null)
         }}
       />
     </div>
@@ -720,7 +736,7 @@ function KartuPengguna({ bukaForm, setBukaForm, sedangUbah, setSedangUbah }) {
     setSibuk(true)
     let hasil
     if (sedangUbah) {
-      hasil = aksi.ubahPengguna(sedangUbah.id, { nama: form.nama, peran: form.peran })
+      hasil = await aksi.ubahPengguna(sedangUbah.id, { nama: form.nama, peran: form.peran })
       if (hasil.ok && form.sandi) {
         hasil = await aksi.aturSandi(sedangUbah.id, form.sandi)
       }
@@ -793,7 +809,7 @@ function KartuPengguna({ bukaForm, setBukaForm, sedangUbah, setSedangUbah }) {
                         type="button"
                         className="btn btn-sm btn-ikon btn-hantu"
                         onClick={async () => {
-                          const hasil = aksi.setAktifPengguna(u.id, u.aktif === false)
+                          const hasil = await aksi.setAktifPengguna(u.id, u.aktif === false)
                           if (!hasil.ok) toast.galat(hasil.galat)
                           else
                             toast.info(
@@ -912,10 +928,11 @@ function KartuPengguna({ bukaForm, setBukaForm, sedangUbah, setSedangUbah }) {
         bahaya
         labelSetuju="Hapus pengguna"
         pesan={`"${akanHapus?.nama}" (@${akanHapus?.username}) tidak bisa masuk lagi. Riwayat transaksi yang pernah dibuatnya tetap tersimpan.`}
-        onSetuju={() => {
-          const hasil = aksi.hapusPengguna(akanHapus.id, sesi?.id)
+        onSetuju={async () => {
+          const hasil = await aksi.hapusPengguna(akanHapus.id, sesi?.id)
           if (!hasil.ok) toast.galat(hasil.galat)
           else toast.info(`Pengguna "${akanHapus.nama}" dihapus`)
+          setAkanHapus(null)
         }}
       />
     </>

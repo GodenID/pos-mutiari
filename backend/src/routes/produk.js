@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db.js'
 import { adminOnly, authRequired } from '../auth.js'
+import { hapusObjek } from '../lib/s3.js'
 
 const app = new Hono()
 app.use('*', authRequired)
@@ -34,6 +35,8 @@ const produkSchema = z.object({
   stok: z.coerce.number().min(0).default(0),
   stokMin: z.coerce.number().min(0).default(0),
   aktif: z.boolean().default(true),
+  gambarUrl: z.string().max(512).default(''),
+  gambarKey: z.string().max(256).default(''),
 })
 
 app.post('/', async (c) => {
@@ -59,8 +62,15 @@ app.post('/', async (c) => {
           stok: Math.round(d.stok),
           stokMin: Math.round(d.stokMin),
           aktif: d.aktif,
+          gambarUrl: d.gambarUrl || '',
+          gambarKey: d.gambarKey || '',
         },
       })
+      await tx.unit.upsert({
+        where: { nama: p.satuan },
+        update: {},
+        create: { nama: p.satuan },
+      }).catch(() => null)
       if (p.stok > 0) {
         await tx.stockMutation.create({
           data: {
@@ -114,8 +124,13 @@ app.put('/:id', async (c) => {
         ...(d.stok !== undefined ? { stok: stokBaru } : {}),
         ...(d.stokMin !== undefined ? { stokMin: Math.round(Number(d.stokMin) || 0) } : {}),
         ...(d.aktif !== undefined ? { aktif: !!d.aktif } : {}),
+        ...(d.gambarUrl !== undefined ? { gambarUrl: String(d.gambarUrl || '') } : {}),
+        ...(d.gambarKey !== undefined ? { gambarKey: String(d.gambarKey || '') } : {}),
       },
     })
+    if (d.gambarKey !== undefined && lama.gambarKey && lama.gambarKey !== d.gambarKey) {
+      await hapusObjek(lama.gambarKey)
+    }
     if (berubah) {
       await tx.stockMutation.create({
         data: {
@@ -151,7 +166,9 @@ app.delete('/:id', adminOnly, async (c) => {
   if (adaTransaksi) {
     return c.json({ error: 'Produk sudah ada di riwayat, nonaktifkan saja' }, 409)
   }
+  const lama = await db.product.findUnique({ where: { id } })
   await db.product.delete({ where: { id } }).catch(() => null)
+  if (lama?.gambarKey) await hapusObjek(lama.gambarKey)
   return c.json({ ok: true })
 })
 

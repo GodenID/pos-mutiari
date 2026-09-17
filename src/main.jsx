@@ -8,6 +8,7 @@ import { AppStoreProvider } from './store/AppStore.jsx'
 import './styles/base.css'
 import './styles/layout.css'
 import './styles/components.css'
+import './styles/foto.css'
 import './styles/print.css'
 
 createRoot(document.getElementById('root')).render(

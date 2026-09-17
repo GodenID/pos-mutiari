@@ -11,12 +11,40 @@ import Stok from './pages/Stok.jsx'
 import Penjualan from './pages/Penjualan.jsx'
 import Laporan from './pages/Laporan.jsx'
 import Pengaturan from './pages/Pengaturan.jsx'
-import { useSesi } from './store/konteks.js'
+import { useSesi, useStatus } from './store/konteks.js'
 
 /** Harus sudah masuk — sonst lempar ke halaman login */
 function PerluMasuk({ children }) {
   const { pengguna } = useSesi()
+  const { memuat, galatKonek } = useStatus()
   const lokasi = useLocation()
+  if (memuat) {
+    return (
+      <div className="memuat-layar" role="status" aria-live="polite">
+        <div className="memuat-kartu">
+          <div className="sm tebal">Menghubungkan ke server…</div>
+          <div className="xs muted">Mengambil data toko terbaru</div>
+        </div>
+      </div>
+    )
+  }
+  if (galatKonek && !pengguna) {
+    return (
+      <div className="memuat-layar" role="alert">
+        <div className="memuat-kartu">
+          <div className="sm tebal">Tidak tersambung ke server</div>
+          <div className="xs muted">{galatKonek}</div>
+          <button
+            type="button"
+            className="btn btn-primer"
+            onClick={() => window.location.reload()}
+          >
+            Coba lagi
+          </button>
+        </div>
+      </div>
+    )
+  }
   if (!pengguna) {
     return <Navigate to="/masuk" replace state={{ dari: lokasi.pathname }} />
   }

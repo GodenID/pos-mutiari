@@ -404,20 +404,24 @@ function TabPersediaan() {
       <ModalMutasi
         data={mutasiUntuk}
         tutup={() => setMutasiUntuk(null)}
-        onSimpan={({ produk: p, tipe, qty, keterangan }) => {
-          const hasil = aksi.mutasiStok({
-            produkId: p.id,
-            tipe,
-            qty,
-            keterangan,
-            ref: tipe === 'masuk' ? 'MASUK' : 'KELUAR',
-          })
-          if (hasil) {
-            toast.sukses(
-              `${p.nama}: stok ${angka(hasil.stokLama)} → ${angka(hasil.stokBaru)} ${
-                p.satuan
-              }`,
-            )
+        onSimpan={async ({ produk: p, tipe, qty, keterangan }) => {
+          try {
+            const hasil = await aksi.mutasiStok({
+              produkId: p.id,
+              tipe,
+              qty,
+              keterangan,
+              ref: tipe === 'masuk' ? 'MASUK' : 'KELUAR',
+            })
+            if (hasil) {
+              toast.sukses(
+                `${p.nama}: stok ${angka(hasil.stokLama)} → ${angka(hasil.stokBaru)} ${
+                  p.satuan
+                }`,
+              )
+            }
+          } catch (e) {
+            toast.galat(e?.message || 'Gagal mencatat mutasi stok')
           }
           setMutasiUntuk(null)
         }}
@@ -591,12 +595,16 @@ function ModalOpname({ buka, tutup }) {
     return a + (c.stokBaru - p.stok) * p.hargaBeli
   }, 0)
 
-  const simpan = () => {
-    const jumlah = aksi.opnameStok(perubahan, 'Stok opname')
-    if (jumlah) {
-      toast.sukses(`${jumlah} produk disesuaikan lewat stok opname`)
-    } else {
-      toast.info('Tidak ada selisih yang perlu disimpan')
+  const simpan = async () => {
+    try {
+      const jumlah = await aksi.opnameStok(perubahan, 'Stok opname')
+      if (jumlah) {
+        toast.sukses(`${jumlah} produk disesuaikan lewat stok opname`)
+      } else {
+        toast.info('Tidak ada selisih yang perlu disimpan')
+      }
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menyimpan stok opname')
     }
     setFisik({})
     tutup()

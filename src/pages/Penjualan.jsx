@@ -586,10 +586,14 @@ export default function Penjualan() {
             <button
               type="button"
               className="btn btn-bahaya-isi kanan"
-              onClick={() => {
+              onClick={async () => {
                 const nomor = akanVoid.nomor
-                aksi.voidTransaksi(akanVoid.id, alasanVoid.trim())
-                toast.sukses(`Nota ${nomor} dibatalkan, stok dikembalikan`)
+                try {
+                  await aksi.voidTransaksi(akanVoid.id, alasanVoid.trim())
+                  toast.sukses(`Nota ${nomor} dibatalkan, stok dikembalikan`)
+                } catch (e) {
+                  toast.galat(e?.message || 'Gagal membatalkan nota')
+                }
                 setAkanVoid(null)
                 setDetail(null)
               }}

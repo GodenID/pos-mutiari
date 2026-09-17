@@ -38,7 +38,7 @@ app.get('/', async (c) => {
   const status = c.req.query('status')
   const metode = c.req.query('metode')
   const q = (c.req.query('q') || '').trim()
-  const limit = Math.min(Number(c.req.query('limit') || 200), 1000)
+  const limit = Math.min(Number(c.req.query('limit') || 200), 5000)
 
   const where = {
     ...(dari || sampai

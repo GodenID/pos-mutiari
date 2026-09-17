@@ -5,9 +5,15 @@ const db = new PrismaClient()
 
 const KATEGORI = ['Minuman', 'Makanan Instan', 'Sembako', 'Snack & Biskuit', 'Perawatan Diri', 'Rumah Tangga', 'Alat Tulis', 'Lain-lain']
 
+const SATUAN = ['pcs', 'pack', 'botol', 'kaleng', 'sachet', 'kg', 'liter', 'renteng', 'dus']
+
 async function main() {
   for (const nama of KATEGORI) {
     await db.category.upsert({ where: { nama }, update: {}, create: { nama } })
+  }
+
+  for (const nama of SATUAN) {
+    await db.unit.upsert({ where: { nama }, update: {}, create: { nama } })
   }
 
   const adminHash = await bcrypt.hash('admin123', 10)

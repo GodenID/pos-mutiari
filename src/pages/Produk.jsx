@@ -24,6 +24,7 @@ import {
   ThUrut,
 } from '../components/UI.jsx'
 import { useAksi, useStatus, useToast } from '../store/konteks.js'
+import { api } from '../lib/api.js'
 import { marginProduk, nilaiPersediaan, statusStok } from '../lib/analitik.js'
 import { SATUAN } from '../data/seed.js'
 import { angka, keAngka, persen, rupiah, rupiahSingkat, tanggalJam } from '../lib/format.js'
@@ -54,12 +55,16 @@ const FORM_KOSONG = {
   stok: '',
   stokMin: '',
   aktif: true,
+  gambarUrl: '',
+  gambarKey: '',
 }
 
 export default function Produk() {
-  const { produk, kategori } = useStatus()
+  const { produk, kategori, satuan } = useStatus()
   const aksi = useAksi()
   const toast = useToast()
+
+  const daftarSatuan = (satuan?.length ? satuan.map((s) => s.nama) : SATUAN)
 
   const [cari, setCari] = useState('')
   const [saring, setSaring] = useState('semua')
@@ -67,12 +72,38 @@ export default function Produk() {
   const [urut, setUrut] = useState({ kunci: 'nama', arah: 'naik' })
   const [halaman, setHalaman] = useState(1)
 
-  const [modal, setModal] = useState(null) // 'form' | 'kategori'
+  const [modal, setModal] = useState(null) // 'form' | 'kategori' | 'satuan'
   const [imporBuka, setImporBuka] = useState(false)
   const [sedangUbah, setSedangUbah] = useState(null)
   const [form, setForm] = useState(FORM_KOSONG)
   const [galat, setGalat] = useState({})
   const [akanHapus, setAkanHapus] = useState(null)
+  const [unggahFoto, setUnggahFoto] = useState(false)
+
+  async function pilihFoto(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.galat('Format foto harus JPG, PNG, atau WebP')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.galat('Ukuran foto maksimal 2 MB')
+      return
+    }
+    setUnggahFoto(true)
+    try {
+      const pre = await api.presignUnggah(file.name, file.type, file.size)
+      await api.unggahKeS3(pre.uploadUrl, file)
+      setForm((f) => ({ ...f, gambarUrl: pre.publicUrl, gambarKey: pre.key }))
+      toast.sukses('Foto terunggah — jangan lupa Simpan Produk')
+    } catch (err) {
+      toast.galat(err?.message || 'Gagal mengunggah foto')
+    } finally {
+      setUnggahFoto(false)
+    }
+  }
 
   const persediaan = useMemo(() => nilaiPersediaan(produk), [produk])
   const jumlahRestok = useMemo(
@@ -134,7 +165,11 @@ export default function Produk() {
 
   function bukaTambah() {
     setSedangUbah(null)
-    setForm({ ...FORM_KOSONG, kategori: kategori[0]?.nama || '' })
+    setForm({
+      ...FORM_KOSONG,
+      kategori: kategori[0]?.nama || '',
+      satuan: satuan?.[0]?.nama || 'pcs',
+    })
     setGalat({})
     setModal('form')
   }
@@ -151,6 +186,8 @@ export default function Produk() {
       stok: p.stok,
       stokMin: p.stokMin,
       aktif: p.aktif !== false,
+      gambarUrl: p.gambarUrl || '',
+      gambarKey: p.gambarKey || '',
     })
     setGalat({})
     setModal('form')
@@ -180,7 +217,7 @@ export default function Produk() {
     return Object.keys(g).filter((k) => k !== 'hargaBeli').length === 0
   }
 
-  function simpan() {
+  async function simpan() {
     if (!validasi()) return
     const data = {
       ...form,
@@ -189,14 +226,18 @@ export default function Produk() {
       stok: form.stok === '' ? 0 : Number(form.stok),
       stokMin: form.stokMin === '' ? 0 : Number(form.stokMin),
     }
-    if (sedangUbah) {
-      aksi.ubahProduk(sedangUbah.id, data)
-      toast.sukses(`Produk "${data.nama}" diperbarui`)
-    } else {
-      aksi.tambahProduk(data)
-      toast.sukses(`Produk "${data.nama}" ditambahkan`)
+    try {
+      if (sedangUbah) {
+        await aksi.ubahProduk(sedangUbah.id, data)
+        toast.sukses(`Produk "${data.nama}" diperbarui`)
+      } else {
+        await aksi.tambahProduk(data)
+        toast.sukses(`Produk "${data.nama}" ditambahkan`)
+      }
+      setModal(null)
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menyimpan produk')
     }
-    setModal(null)
   }
 
   function eksporCsv() {
@@ -388,13 +429,25 @@ export default function Produk() {
                   {tampil.map((p) => (
                     <tr key={p.id}>
                       <td>
-                        <div className="row g6">
-                          <span className="sel-utama">{p.nama}</span>
-                          {p.aktif === false ? (
-                            <Lencana warna="netral">Nonaktif</Lencana>
+                        <div className="row g6" style={{ alignItems: 'center' }}>
+                          {p.gambarUrl ? (
+                            <img
+                              src={p.gambarUrl}
+                              alt=""
+                              loading="lazy"
+                              className="produk-thumb"
+                            />
                           ) : null}
+                          <div>
+                            <div className="row g6">
+                              <span className="sel-utama">{p.nama}</span>
+                              {p.aktif === false ? (
+                                <Lencana warna="netral">Nonaktif</Lencana>
+                              ) : null}
+                            </div>
+                            <div className="sel-sub num">{p.sku}</div>
+                          </div>
                         </div>
-                        <div className="sel-sub num">{p.sku}</div>
                       </td>
                       <td>
                         <span className="sm">{p.kategori}</span>
@@ -435,13 +488,17 @@ export default function Produk() {
                           <button
                             type="button"
                             className="btn btn-sm btn-ikon btn-hantu"
-                            onClick={() => {
-                              aksi.setAktifProduk(p.id, p.aktif === false)
-                              toast.info(
-                                `${p.nama} ${
-                                  p.aktif === false ? 'diaktifkan' : 'dinonaktifkan'
-                                }`,
-                              )
+                            onClick={async () => {
+                              try {
+                                await aksi.setAktifProduk(p.id, p.aktif === false)
+                                toast.info(
+                                  `${p.nama} ${
+                                    p.aktif === false ? 'diaktifkan' : 'dinonaktifkan'
+                                  }`,
+                                )
+                              } catch (e) {
+                                toast.galat(e?.message || 'Gagal mengubah status')
+                              }
                             }}
                             aria-label={`${
                               p.aktif === false ? 'Aktifkan' : 'Nonaktifkan'
@@ -481,7 +538,17 @@ export default function Produk() {
                   onClick={() => bukaUbah(p)}
                 >
                   <div>
-                    <div className="daftar-nama">{p.nama}</div>
+                    <div className="row g6" style={{ alignItems: 'center' }}>
+                      {p.gambarUrl ? (
+                        <img
+                          src={p.gambarUrl}
+                          alt=""
+                          loading="lazy"
+                          className="produk-thumb"
+                        />
+                      ) : null}
+                      <div className="daftar-nama">{p.nama}</div>
+                    </div>
                     <div className="daftar-meta num">
                       {p.sku} • {p.kategori}
                     </div>
@@ -565,17 +632,30 @@ export default function Produk() {
           </Bidang>
 
           <Bidang label="Satuan">
-            <select
-              className="sel"
-              value={form.satuan}
-              onChange={(e) => setForm({ ...form, satuan: e.target.value })}
-            >
-              {SATUAN.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <div className="row g6">
+              <select
+                className="sel isi"
+                value={form.satuan}
+                onChange={(e) => setForm({ ...form, satuan: e.target.value })}
+              >
+                {!daftarSatuan.includes(form.satuan) && form.satuan ? (
+                  <option value={form.satuan}>{form.satuan}</option>
+                ) : null}
+                {daftarSatuan.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setModal('satuan')}
+                title="Kelola satuan"
+              >
+                <Icon nama="tambah" ukuran={14} />
+              </button>
+            </div>
           </Bidang>
 
           <Bidang label="Kategori" wajib galat={galat.kategori} penuh>
@@ -601,6 +681,19 @@ export default function Produk() {
                 <Icon nama="tambah" ukuran={14} />
               </button>
             </div>
+          </Bidang>
+
+          <Bidang
+            label="Foto produk"
+            penuh
+            petunjuk="JPG / PNG / WebP, maksimal 2 MB — tersimpan di penyimpanan S3 toko"
+          >
+            <PemilihFoto
+              nilai={form.gambarUrl}
+              sibuk={unggahFoto}
+              onPilih={pilihFoto}
+              onHapus={() => setForm((f) => ({ ...f, gambarUrl: '', gambarKey: '' }))}
+            />
           </Bidang>
 
           <Bidang label="Harga beli (modal)" galat={galat.hargaBeli}>
@@ -668,6 +761,9 @@ export default function Produk() {
       {/* ======================== Modal kategori ======================== */}
       <ModalKategori buka={modal === 'kategori'} tutup={() => setModal(null)} />
 
+      {/* ========================= Modal satuan ========================= */}
+      <ModalSatuan buka={modal === 'satuan'} tutup={() => setModal(null)} />
+
       {imporBuka ? <ModalImpor tutup={() => setImporBuka(false)} /> : null}
 
       {/* ========================= Hapus produk ======================== */}
@@ -678,9 +774,14 @@ export default function Produk() {
         bahaya
         labelSetuju="Hapus produk"
         pesan={`Produk "${akanHapus?.nama}" akan dihapus dari daftar. Riwayat transaksi yang sudah terjadi tetap tersimpan. Tindakan ini tidak dapat dibatalkan.`}
-        onSetuju={() => {
-          aksi.hapusProduk(akanHapus.id)
-          toast.info(`Produk "${akanHapus.nama}" dihapus`)
+        onSetuju={async () => {
+          try {
+            await aksi.hapusProduk(akanHapus.id)
+            toast.info(`Produk "${akanHapus.nama}" dihapus`)
+          } catch (e) {
+            toast.galat(e?.message || 'Gagal menghapus produk')
+          }
+          setAkanHapus(null)
         }}
       />
     </div>
@@ -692,7 +793,7 @@ export default function Produk() {
 const BATAS_PRATINJAU = 100
 
 function ModalImpor({ tutup }) {
-  const { produk, kategori } = useStatus()
+  const { produk, kategori, satuan } = useStatus()
   const aksi = useAksi()
   const toast = useToast()
 
@@ -729,18 +830,52 @@ function ModalImpor({ tutup }) {
     ),
   ]
 
-  function impor() {
+  async function impor() {
     if (!valid.length || mengimpor) return
     setMengimpor(true)
     try {
-      kategoriBaru.forEach((nama) => aksi.tambahKategori(nama))
-      valid.forEach((b) => aksi.tambahProduk({ ...b.data }))
-      toast.sukses(
-        `${angka(valid.length)} produk diimpor` +
-          (kategoriBaru.length ? `, ${angka(kategoriBaru.length)} kategori baru dibuat` : '') +
-          (bermasalah.length ? ` — ${angka(bermasalah.length)} baris dilewati` : ''),
-      )
-      tutup()
+      for (const nama of kategoriBaru) {
+        try {
+          await aksi.tambahKategori(nama)
+        } catch {
+          /* sudah ada di server */
+        }
+      }
+      const satuanAda = new Set((satuan || []).map((s) => s.nama.toLowerCase()))
+      const satuanBaru = [
+        ...new Set(
+          valid.map((b) => b.data.satuan).filter((s) => s && !satuanAda.has(s.toLowerCase())),
+        ),
+      ]
+      for (const nama of satuanBaru) {
+        try {
+          await aksi.tambahSatuan(nama)
+        } catch {
+          /* sudah ada di server */
+        }
+      }
+      let ok = 0
+      let gagal = 0
+      for (const b of valid) {
+        try {
+          await aksi.tambahProduk({ ...b.data })
+          ok += 1
+        } catch {
+          gagal += 1
+        }
+      }
+      if (ok > 0) {
+        toast.sukses(
+          `${angka(ok)} produk diimpor` +
+            (kategoriBaru.length ? `, ${angka(kategoriBaru.length)} kategori baru dibuat` : '') +
+            (satuanBaru.length ? `, ${angka(satuanBaru.length)} satuan baru dibuat` : '') +
+            (bermasalah.length ? ` — ${angka(bermasalah.length)} baris dilewati` : '') +
+            (gagal ? ` — ${angka(gagal)} gagal tersimpan` : ''),
+        )
+        tutup()
+      } else {
+        toast.galat('Tidak ada produk yang berhasil diimpor — periksa koneksi server')
+      }
     } finally {
       setMengimpor(false)
     }
@@ -873,16 +1008,31 @@ function ModalKategori({ buka, tutup }) {
 
   const hitungProduk = (nama) => produk.filter((p) => p.kategori === nama).length
 
-  const tambah = () => {
+  const tambah = async () => {
     const nama = baru.trim()
     if (!nama) return
     if (kategori.some((k) => k.nama.toLowerCase() === nama.toLowerCase())) {
       toast.galat('Kategori dengan nama itu sudah ada')
       return
     }
-    aksi.tambahKategori(nama)
-    toast.sukses(`Kategori "${nama}" ditambahkan`)
-    setBaru('')
+    try {
+      await aksi.tambahKategori(nama)
+      toast.sukses(`Kategori "${nama}" ditambahkan`)
+      setBaru('')
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menambah kategori')
+    }
+  }
+
+  const simpanUbah = async (k) => {
+    if (!ubahNama.trim()) return
+    try {
+      await aksi.ubahKategori(k.id, ubahNama, k.nama)
+      setUbahId(null)
+      toast.sukses('Kategori diperbarui')
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menyimpan kategori')
+    }
   }
 
   return (
@@ -940,21 +1090,15 @@ function ModalKategori({ buka, tutup }) {
                       onChange={(e) => setUbahNama(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          aksi.ubahKategori(k.id, ubahNama, k.nama)
-                          setUbahId(null)
-                          toast.sukses('Kategori diperbarui')
+                          e.preventDefault()
+                          simpanUbah(k)
                         }
                       }}
                     />
                     <button
                       type="button"
                       className="btn btn-sm btn-primer"
-                      onClick={() => {
-                        if (!ubahNama.trim()) return
-                        aksi.ubahKategori(k.id, ubahNama, k.nama)
-                        setUbahId(null)
-                        toast.sukses('Kategori diperbarui')
-                      }}
+                      onClick={() => simpanUbah(k)}
                     >
                       Simpan
                     </button>
@@ -988,11 +1132,15 @@ function ModalKategori({ buka, tutup }) {
                     <button
                       type="button"
                       className="btn btn-sm btn-ikon btn-hantu"
-                      onClick={() => {
-                        aksi.hapusKategori(k.id, k.nama)
-                        toast.info(
-                          `Kategori "${k.nama}" dihapus. Produk dipindah ke "Lain-lain".`,
-                        )
+                      onClick={async () => {
+                        try {
+                          await aksi.hapusKategori(k.id, k.nama)
+                          toast.info(
+                            `Kategori "${k.nama}" dihapus. Produk dipindah ke "Lain-lain".`,
+                          )
+                        } catch (e) {
+                          toast.galat(e?.message || 'Gagal menghapus kategori')
+                        }
                       }}
                       aria-label={`Hapus kategori ${k.nama}`}
                     >
@@ -1006,5 +1154,210 @@ function ModalKategori({ buka, tutup }) {
         </div>
       </div>
     </Modal>
+  )
+}
+
+/* -------------------------------- Satuan --------------------------------- */
+
+function ModalSatuan({ buka, tutup }) {
+  const { satuan, produk } = useStatus()
+  const aksi = useAksi()
+  const toast = useToast()
+
+  const [baru, setBaru] = useState('')
+  const [ubahId, setUbahId] = useState(null)
+  const [ubahNama, setUbahNama] = useState('')
+
+  const hitungPakai = (nama) => produk.filter((p) => p.satuan === nama).length
+
+  const tambah = async () => {
+    const nama = baru.trim()
+    if (!nama) return
+    if (satuan.some((s) => s.nama.toLowerCase() === nama.toLowerCase())) {
+      toast.galat('Satuan dengan nama itu sudah ada')
+      return
+    }
+    try {
+      await aksi.tambahSatuan(nama)
+      toast.sukses(`Satuan "${nama}" ditambahkan`)
+      setBaru('')
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menambah satuan')
+    }
+  }
+
+  const simpanUbah = async (s) => {
+    if (!ubahNama.trim()) return
+    try {
+      await aksi.ubahSatuan(s.id, ubahNama)
+      setUbahId(null)
+      toast.sukses('Satuan diperbarui — produk terkait ikut berubah')
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menyimpan satuan')
+    }
+  }
+
+  return (
+    <Modal
+      buka={buka}
+      tutup={tutup}
+      judul="Kelola Satuan"
+      keterangan="Satuan dipakai di form produk, mis. pcs, liter, dus. Satuan yang masih dipakai produk tidak bisa dihapus."
+      ukuran="sm"
+      kaki={
+        <button type="button" className="btn kanan" onClick={tutup}>
+          Selesai
+        </button>
+      }
+    >
+      <div className="col g12">
+        <div className="row g6">
+          <input
+            className="inp isi"
+            data-fokus-awal
+            value={baru}
+            onChange={(e) => setBaru(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                tambah()
+              }
+            }}
+            placeholder="Satuan baru, mis. liter"
+            maxLength={24}
+          />
+          <button type="button" className="btn btn-primer" onClick={tambah}>
+            <Icon nama="tambah" ukuran={15} />
+            Tambah
+          </button>
+        </div>
+
+        <div className="kartu" style={{ overflow: 'hidden' }}>
+          {satuan.length === 0 ? (
+            <Kosong ikon="kotak" judul="Belum ada satuan" />
+          ) : (
+            satuan.map((s) => (
+              <div
+                key={s.id}
+                className="row g6"
+                style={{
+                  padding: '9px 11px',
+                  borderBottom: '1px solid var(--line-soft)',
+                }}
+              >
+                {ubahId === s.id ? (
+                  <>
+                    <input
+                      className="inp isi"
+                      value={ubahNama}
+                      maxLength={24}
+                      onChange={(e) => setUbahNama(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          simpanUbah(s)
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primer"
+                      onClick={() => simpanUbah(s)}
+                    >
+                      Simpan
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={() => setUbahId(null)}
+                    >
+                      Batal
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="isi">
+                      <div className="sm tebal">{s.nama}</div>
+                      <div className="xs tersier num">
+                        {angka(hitungPakai(s.nama))} produk memakai
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ikon btn-hantu"
+                      onClick={() => {
+                        setUbahId(s.id)
+                        setUbahNama(s.nama)
+                      }}
+                      aria-label={`Ubah nama ${s.nama}`}
+                    >
+                      <Icon nama="ubah" ukuran={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ikon btn-hantu"
+                      onClick={async () => {
+                        try {
+                          await aksi.hapusSatuan(s.id)
+                          toast.info(`Satuan "${s.nama}" dihapus`)
+                        } catch (e) {
+                          toast.galat(e?.message || 'Gagal menghapus satuan')
+                        }
+                      }}
+                      aria-label={`Hapus satuan ${s.nama}`}
+                    >
+                      <Icon nama="sampah" ukuran={14} />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+/* ------------------------------- Foto produk ------------------------------ */
+
+function PemilihFoto({ nilai, sibuk, onPilih, onHapus }) {
+  return (
+    <div className="foto-pemilih">
+      {nilai ? (
+        <div className="col g8">
+          <img src={nilai} alt="Foto produk" className="foto-pratinjau" loading="lazy" />
+          <div className="row g6 wrap">
+            <label className="btn btn-sm">
+              <Icon nama="ubah" ukuran={13} />
+              {sibuk ? 'Mengunggah…' : 'Ganti foto'}
+              <input
+                type="file"
+                className="sr-only"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={onPilih}
+                disabled={sibuk}
+              />
+            </label>
+            <button type="button" className="btn btn-sm" onClick={onHapus} disabled={sibuk}>
+              <Icon nama="sampah" ukuran={13} />
+              Hapus
+            </button>
+          </div>
+        </div>
+      ) : (
+        <label className="btn foto-pilih">
+          <Icon nama="tambah" ukuran={15} />
+          {sibuk ? 'Mengunggah…' : 'Pilih foto produk'}
+          <input
+            type="file"
+            className="sr-only"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={onPilih}
+            disabled={sibuk}
+          />
+        </label>
+      )}
+    </div>
   )
 }

@@ -138,7 +138,7 @@ export default function Pelanggan() {
     setModal('form')
   }
 
-  function simpan() {
+  async function simpan() {
     const g = {}
     if (!form.nama.trim()) g.nama = 'Nama pelanggan wajib diisi'
     const bentrok = pelanggan.find(
@@ -149,14 +149,18 @@ export default function Pelanggan() {
     if (bentrok) g.nama = 'Nama ini sudah terdaftar'
     setGalat(g)
     if (Object.keys(g).length) return
-    if (sedangUbah) {
-      aksi.ubahPelanggan(sedangUbah.id, form)
-      toast.sukses(`Pelanggan "${form.nama.trim()}" diperbarui`)
-    } else {
-      aksi.tambahPelanggan(form)
-      toast.sukses(`Pelanggan "${form.nama.trim()}" ditambahkan`)
+    try {
+      if (sedangUbah) {
+        await aksi.ubahPelanggan(sedangUbah.id, form)
+        toast.sukses(`Pelanggan "${form.nama.trim()}" diperbarui`)
+      } else {
+        await aksi.tambahPelanggan(form)
+        toast.sukses(`Pelanggan "${form.nama.trim()}" ditambahkan`)
+      }
+      setModal(null)
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menyimpan pelanggan')
     }
-    setModal(null)
   }
 
   function eksporCsv() {
@@ -515,9 +519,13 @@ export default function Pelanggan() {
         bahaya
         labelSetuju="Hapus pelanggan"
         pesan={`"${akanHapus?.nama}" akan dihapus dari master. Riwayat transaksi yang sudah terjadi tetap tersimpan dan tetap bisa dilihat di halaman Penjualan.`}
-        onSetuju={() => {
-          aksi.hapusPelanggan(akanHapus.id)
-          toast.info(`Pelanggan "${akanHapus.nama}" dihapus`)
+        onSetuju={async () => {
+          try {
+            await aksi.hapusPelanggan(akanHapus.id)
+            toast.info(`Pelanggan "${akanHapus.nama}" dihapus`)
+          } catch (e) {
+            toast.galat(e?.message || 'Gagal menghapus pelanggan')
+          }
         }}
       />
     </div>
