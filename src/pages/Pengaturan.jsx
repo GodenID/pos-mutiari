@@ -17,6 +17,7 @@ import {
   Segmen,
 } from '../components/UI.jsx'
 import { useAksi, useSesi, useStatus, useToast } from '../store/konteks.js'
+import { API_BASE } from '../lib/api.js'
 import { PENGATURAN_AWAL } from '../data/seed.js'
 import { labelPeran } from '../lib/auth.js'
 import { angka, rupiah, tanggalJam } from '../lib/format.js'
@@ -505,7 +506,7 @@ const PENYEDIA = {
     bidang: [
       { kunci: 'clientId', label: 'Client ID', placeholder: 'mis. 42f12a10-…' },
       { kunci: 'clientSecret', label: 'Client Secret', sandi: true, placeholder: '••••••••' },
-      { kunci: 'redirectUri', label: 'URL OAuth Callback', placeholder: 'https://toko-anda.id/aol-callback' },
+      { kunci: 'redirectUri', label: 'URL OAuth Callback (opsional)', petunjuk: 'Kosongkan = otomatis pakai URL backend di bawah', placeholder: 'https://api.domainlu.com/api/integrasi/accurate/callback' },
       { kunci: 'dbId', label: 'ID Database', petunjuk: 'Lihat di hasil API db-list Accurate', placeholder: 'mis. 1156' },
     ],
   },
@@ -608,7 +609,7 @@ function ModalIntegrasi({ penyediaId, tutup }) {
   const ubah = (kunci) => (e) => setDraf((d) => ({ ...d, [kunci]: e.target.value }))
 
   const callbackUrl =
-    typeof window !== 'undefined' ? `${window.location.origin}/integrasi/callback` : ''
+    `${API_BASE}/api/integrasi/accurate/callback`
 
   const simpan = async () => {
     if (!String(draf.clientId || '').trim()) return
@@ -819,8 +820,11 @@ function ModalIntegrasi({ penyediaId, tutup }) {
             <div className="info-box info-box-netral">
               <Icon nama="info" ukuran={16} />
               <span>
-                Daftarkan URL OAuth Callback ini di aplikasi Accurate:{' '}
-                <span className="num">{callbackUrl || '(isi URL OAuth Callback manual di atas)'}</span>
+                Daftarkan URL ini sebagai <b>OAuth Callback / Redirect URI</b> di
+                aplikasi Accurate (developer portal, platform Website):{' '}
+                <span className="num">{callbackUrl}</span>
+                {' '}— harus persis sama, tanpa garis miring di ujung. Kolom URL
+                Callback di atas cukup dikosongkan (otomatis pakai URL ini).
               </span>
             </div>
           ) : null}

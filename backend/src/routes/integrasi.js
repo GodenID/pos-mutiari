@@ -55,11 +55,20 @@ async function ambil(provider) {
 
 /* ------------------------------ Accurate ------------------------------ */
 
-function redirectUriUntuk(extra = {}) {
+function backendBase(c) {
+  if (process.env.BACKEND_URL) return process.env.BACKEND_URL.replace(/\/$/, '')
+  const proto = c.req.header('x-forwarded-proto') || new URL(c.req.url).protocol.replace(':', '') || 'https'
+  const host = c.req.header('x-forwarded-host') || c.req.header('host') || ''
+  return `${proto}://${host}`.replace(/\/$/, '')
+}
+
+/* redirect_uri yang dikirim ke Accurate = backend (yang menukar kode).
+   Urutan: override manual > yang dipakai saat authorize > turunan request. */
+function redirectUriUntuk(extra = {}, c = null) {
   if (extra.redirectUri) return extra.redirectUri
-  const base = frontendBase()
-  if (!base) throw new Error('Isi URL OAuth Callback di pengaturan dulu')
-  return `${base}/integrasi/callback`
+  if (extra.redirectUriUsed) return extra.redirectUriUsed
+  if (!c) throw new Error('Isi URL OAuth Callback di pengaturan dulu')
+  return `${backendBase(c)}/api/integrasi/accurate/callback`
 }
 
 async function konteksAccurate() {
@@ -192,10 +201,14 @@ app.get('/accurate/authorize', authRequired, async (c) => {
   const state = jwt.sign({ t: 'itg-oauth', uid: user?.sub || '' }, JWT_SECRET, { expiresIn: '10m' })
   let redirectUri
   try {
-    redirectUri = redirectUriUntuk(rec.extra || {})
+    redirectUri = redirectUriUntuk(rec.extra || {}, c)
   } catch (e) {
     return c.json({ error: e.message }, 400)
   }
+  await db.integration.update({
+    where: { provider: 'accurate' },
+    data: { extra: { ...(rec.extra || {}), redirectUriUsed: redirectUri } },
+  })
   return c.json({ url: authorizeUrl({ clientId: rec.clientId, redirectUri, state }) })
 })
 
@@ -218,7 +231,7 @@ app.get('/accurate/callback', async (c) => {
   try {
     const rec = await ambil('accurate')
     if (!rec?.clientId) throw new Error('Konfigurasi Accurate hilang')
-    const redirectUri = redirectUriUntuk(rec.extra || {})
+    const redirectUri = redirectUriUntuk(rec.extra || {}, c)
     const data = await tukarKode({
       clientId: rec.clientId,
       clientSecret: dekrip(rec.secretEnc),
