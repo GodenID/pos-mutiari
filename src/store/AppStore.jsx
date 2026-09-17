@@ -26,10 +26,20 @@ function statusKosong() {
     pembelian: [],
     pengguna: [],
     pengaturan: { ...PENGATURAN_AWAL },
+    meta: metaKosong(),
     integrasi: {
       accurate: statusIntegrasiKosong('accurate'),
       jurnal: statusIntegrasiKosong('jurnal'),
     },
+  }
+}
+
+function metaKosong() {
+  return {
+    produk: { total: 0, terpotong: false },
+    transaksi: { total: 0, terpotong: false },
+    mutasi: { total: 0, terpotong: false },
+    pembelian: { total: 0, terpotong: false },
   }
 }
 
@@ -114,6 +124,7 @@ export function AppStoreProvider({ children }) {
       api.statusIntegrasi(),
     ])
     const patch = {}
+    const metaPatch = {}
     const gagal = []
     hasil.forEach((h, i) => {
       const k = KUNCI_SUMBER[i]
@@ -129,11 +140,17 @@ export function AppStoreProvider({ children }) {
                   jurnal: statusIntegrasiKosong('jurnal'),
                 }
               : [])
+        if (k === 'produk' || k === 'transaksi' || k === 'mutasi' || k === 'pembelian') {
+          metaPatch[k] = {
+            total: Number(h.value?.total ?? (Array.isArray(v) ? v.length : 0)),
+            terpotong: !!h.value?.terpotong,
+          }
+        }
       } else {
-        gagal.push(`${k} (${h.reason?.message || 'gagal'})`)
+        gagal.push(`${k}: ${h.reason?.message || 'gagal'}`)
       }
     })
-    setStatus((s) => ({ ...s, ...patch }))
+    setStatus((s) => ({ ...s, ...patch, meta: { ...s.meta, ...metaPatch } }))
     if (gagal.some((g) => g.includes('Sesi berakhir'))) {
       simpanToken('')
       setSesiPengguna(null)
@@ -145,7 +162,16 @@ export function AppStoreProvider({ children }) {
 
   const segarkanStok = useCallback(async () => {
     const [produk, mutasi] = await Promise.all([api.daftarProduk(), api.daftarMutasi()])
-    setStatus((s) => ({ ...s, produk: produk.produk || [], mutasi: mutasi.mutasi || [] }))
+    setStatus((s) => ({
+      ...s,
+      produk: produk.produk || [],
+      mutasi: mutasi.mutasi || [],
+      meta: {
+        ...s.meta,
+        produk: { total: Number(produk.total ?? 0), terpotong: !!produk.terpotong },
+        mutasi: { total: Number(mutasi.total ?? 0), terpotong: !!mutasi.terpotong },
+      },
+    }))
   }, [])
 
   const muatIntegrasi = useCallback(async () => {
@@ -164,6 +190,10 @@ export function AppStoreProvider({ children }) {
       kategori: kategori.kategori || [],
       satuan: satuan.satuan || [],
       produk: produk.produk || [],
+      meta: {
+        ...s.meta,
+        produk: { total: Number(produk.total ?? 0), terpotong: !!produk.terpotong },
+      },
     }))
   }, [])
 
@@ -449,6 +479,8 @@ export function AppStoreProvider({ children }) {
         await api.kosongkanData()
         await muatSemua()
       },
+
+      bersihFotoYatim: () => api.bersihFoto(),
 
       /* ---------------------------- Integrasi ---------------------------- */
       muatIntegrasi,

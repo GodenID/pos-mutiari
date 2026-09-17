@@ -11,18 +11,19 @@ app.get('/', async (c) => {
   const q = (c.req.query('q') || '').trim()
   const kategori = (c.req.query('kategori') || '').trim()
   const aktif = c.req.query('aktif')
-  const data = await db.product.findMany({
-    where: {
-      ...(q
-        ? { OR: [{ nama: { contains: q, mode: 'insensitive' } }, { sku: { contains: q, mode: 'insensitive' } }] }
-        : {}),
-      ...(kategori ? { kategori } : {}),
-      ...(aktif === 'true' ? { aktif: true } : aktif === 'false' ? { aktif: false } : {}),
-    },
-    orderBy: { nama: 'asc' },
-    take: 2000,
-  })
-  return c.json({ produk: data })
+  const where = {
+    ...(q
+      ? { OR: [{ nama: { contains: q, mode: 'insensitive' } }, { sku: { contains: q, mode: 'insensitive' } }] }
+      : {}),
+    ...(kategori ? { kategori } : {}),
+    ...(aktif === 'true' ? { aktif: true } : aktif === 'false' ? { aktif: false } : {}),
+  }
+  const BATAS = 5000
+  const [total, data] = await Promise.all([
+    db.product.count({ where }),
+    db.product.findMany({ where, orderBy: { nama: 'asc' }, take: BATAS }),
+  ])
+  return c.json({ produk: data, total, terpotong: total > data.length })
 })
 
 const produkSchema = z.object({

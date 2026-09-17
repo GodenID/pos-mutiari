@@ -59,7 +59,8 @@ app.get('/', async (c) => {
     orderBy: { tanggal: 'desc' },
     take: limit,
   })
-  return c.json({ transaksi: data })
+  const total = await db.sale.count({ where })
+  return c.json({ transaksi: data, total, terpotong: total > data.length })
 })
 
 app.get('/:id', async (c) => {

@@ -48,7 +48,7 @@ const TAB = [
 ]
 
 export default function Laporan() {
-  const { transaksi, produk, pengaturan } = useStatus()
+  const { transaksi, produk, pengaturan, meta } = useStatus()
   const toast = useToast()
 
   const rentang = useRentang('30hari')
@@ -210,6 +210,16 @@ export default function Laporan() {
 
       <div className="tanpa-cetak">
         <RentangTanggal rentang={rentang} />
+
+      {meta?.transaksi?.terpotong ? (
+        <div className="info-box info-box-kuning tanpa-cetak">
+          <Icon nama="peringatan" ukuran={16} />
+          <span>
+            Hanya {angka(transaksi.length)} dari {angka(meta.transaksi.total)} transaksi
+            terbaru yang dimuat — angka periode lama bisa kurang lengkap.
+          </span>
+        </div>
+      ) : null}
       </div>
 
       <div className="tanpa-cetak">

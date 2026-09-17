@@ -8,13 +8,13 @@ app.use('*', authRequired)
 
 app.get('/', async (c) => {
   const produkId = c.req.query('produkId')
-  const limit = Math.min(Number(c.req.query('limit') || 200), 1000)
-  const data = await db.stockMutation.findMany({
-    where: produkId ? { produkId } : {},
-    orderBy: { tanggal: 'desc' },
-    take: limit,
-  })
-  return c.json({ mutasi: data })
+  const limit = Math.min(Number(c.req.query('limit') || 200), 5000)
+  const where = produkId ? { produkId } : {}
+  const [total, data] = await Promise.all([
+    db.stockMutation.count({ where }),
+    db.stockMutation.findMany({ where, orderBy: { tanggal: 'desc' }, take: limit }),
+  ])
+  return c.json({ mutasi: data, total, terpotong: total > data.length })
 })
 
 const schema = z.object({

@@ -9,12 +9,15 @@ app.use('*', authRequired)
 
 app.get('/', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') || 200), 500)
-  const data = await db.purchase.findMany({
-    include: { item: true },
-    orderBy: { tanggal: 'desc' },
-    take: limit,
-  })
-  return c.json({ pembelian: data })
+  const [total, data] = await Promise.all([
+    db.purchase.count(),
+    db.purchase.findMany({
+      include: { item: true },
+      orderBy: { tanggal: 'desc' },
+      take: limit,
+    }),
+  ])
+  return c.json({ pembelian: data, total, terpotong: total > data.length })
 })
 
 const schema = z.object({

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '../db.js'
 import { adminOnly, authRequired } from '../auth.js'
+import { daftarKunci, hapusBanyak, s3Aktif } from '../lib/s3.js'
 import { KATEGORI_DEMO, PELANGGAN_DEMO, PRODUK_DEMO, SATUAN_DEMO, SUPPLIER_DEMO } from '../../prisma/demoData.js'
 
 const app = new Hono()
@@ -39,6 +40,23 @@ app.post('/reset', async (c) => {
     await tanamDasar(tx)
   })
   return c.json({ ok: true })
+})
+
+/** Hapus file foto di S3 yang tidak dipakai produk mana pun */
+app.post('/bersih-foto', async (c) => {
+  if (!s3Aktif()) return c.json({ error: 'Penyimpanan foto belum dikonfigurasi di server (S3)' }, 503)
+  try {
+    const [semua, terpakai] = await Promise.all([
+      daftarKunci('produk/'),
+      db.product.findMany({ select: { gambarKey: true } }),
+    ])
+    const dipakai = new Set(terpakai.map((p) => p.gambarKey).filter(Boolean))
+    const yatim = semua.filter((k) => !dipakai.has(k))
+    const dihapus = yatim.length ? await hapusBanyak(yatim) : 0
+    return c.json({ ok: true, diperiksa: semua.length, yatim: yatim.length, dihapus })
+  } catch (e) {
+    return c.json({ error: `Gagal membaca bucket (cek izin ListBucket): ${e?.message || 'galat'}`.slice(0, 300) }, 502)
+  }
 })
 
 /** Muat data master demo (tanpa riwayat transaksi palsu) */

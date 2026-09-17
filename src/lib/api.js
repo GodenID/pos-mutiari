@@ -90,7 +90,7 @@ export const api = {
   daftarPembelian: () => get('/api/pembelian?limit=500'),
   simpanPembelian: (d) => post('/api/pembelian', d),
 
-  daftarMutasi: () => get('/api/mutasi?limit=1000'),
+  daftarMutasi: (limit = 2000) => get(`/api/mutasi?limit=${limit}`),
   mutasiStok: (d) => post('/api/mutasi', d),
   opnameStok: (perubahan, keterangan) => post('/api/mutasi/opname', { perubahan, keterangan }),
 
@@ -108,6 +108,7 @@ export const api = {
   // Admin
   muatDemo: () => post('/api/admin/demo', {}),
   kosongkanData: () => post('/api/admin/reset', {}),
+  bersihFoto: () => post('/api/admin/bersih-foto', {}),
 
   // Foto produk (S3)
   presignUnggah: (namaFile, tipe, ukuran) => post('/api/upload/presign', { namaFile, tipe, ukuran }),

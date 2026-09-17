@@ -724,7 +724,7 @@ function ModalOpname({ buka, tutup }) {
 /* ============================ Riwayat mutasi ============================= */
 
 function TabRiwayat() {
-  const { mutasi } = useStatus()
+  const { mutasi, meta } = useStatus()
   const toast = useToast()
 
   const [cari, setCari] = useState('')
@@ -807,7 +807,11 @@ function TabRiwayat() {
           label="Total baris mutasi"
           ikon="riwayat"
           nilai={angka(mutasi.length)}
-          kaki="seluruh riwayat tersimpan"
+          kaki={
+            meta?.mutasi?.terpotong
+              ? `${angka(mutasi.length)} dari ${angka(meta.mutasi.total)} terbaru tampil`
+              : 'seluruh riwayat tersimpan'
+          }
         />
       </div>
 

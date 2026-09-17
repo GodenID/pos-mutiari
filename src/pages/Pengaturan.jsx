@@ -318,9 +318,9 @@ export default function Pengaturan() {
               <div className="info-box info-box-netral">
                 <Icon nama="info" ukuran={16} />
                 <span>
-                  Aplikasi ini berjalan sepenuhnya di peramban. Seluruh data disimpan
-                  di <b>penyimpanan lokal</b> perangkat ini, tidak dikirim ke server
-                  mana pun. Menghapus data peramban akan menghapus data toko.
+                  Data tersimpan terpusat di <b>server toko</b> (database Postgres).
+                  Foto produk tersimpan di penyimpanan S3. Tindakan di bawah ini
+                  berlaku untuk seluruh kasir dan tidak dapat dibatalkan.
                 </span>
               </div>
 
@@ -375,6 +375,29 @@ export default function Pengaturan() {
                 >
                   <Icon nama="sampah" ukuran={15} />
                   Kosongkan Semua Data
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={async () => {
+                    try {
+                      const hasil = await aksi.bersihFotoYatim()
+                      if (hasil.yatim > 0) {
+                        toast.sukses(
+                          `${hasil.dihapus} dari ${hasil.yatim} foto yatim dihapus (${hasil.diperiksa} diperiksa)`,
+                        )
+                      } else {
+                        toast.info(
+                          `Tidak ada foto yatim (${hasil.diperiksa} foto diperiksa)`,
+                        )
+                      }
+                    } catch (e) {
+                      toast.galat(e?.message || 'Gagal membersihkan foto')
+                    }
+                  }}
+                >
+                  <Icon nama="sampah" ukuran={15} />
+                  Bersihkan Foto Yatim
                 </button>
               </div>
             </div>

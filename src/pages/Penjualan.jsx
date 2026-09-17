@@ -44,7 +44,7 @@ const SARING_STATUS = [
 ]
 
 export default function Penjualan() {
-  const { transaksi, pengaturan, integrasi } = useStatus()
+  const { transaksi, pengaturan, integrasi, meta } = useStatus()
   const { pengguna } = useSesi()
   const aksi = useAksi()
   const toast = useToast()
@@ -182,6 +182,16 @@ export default function Penjualan() {
       </div>
 
       <RentangTanggal rentang={rentang} />
+
+      {meta?.transaksi?.terpotong ? (
+        <div className="info-box info-box-kuning tanpa-cetak">
+          <Icon nama="peringatan" ukuran={16} />
+          <span>
+            Hanya {angka(transaksi.length)} dari {angka(meta.transaksi.total)} transaksi
+            terbaru yang dimuat — periode lama tidak ikut dihitung.
+          </span>
+        </div>
+      ) : null}
 
       <div className="grid-stat">
         <Stat

@@ -60,7 +60,7 @@ const FORM_KOSONG = {
 }
 
 export default function Produk() {
-  const { produk, kategori, satuan } = useStatus()
+  const { produk, kategori, satuan, meta } = useStatus()
   const aksi = useAksi()
   const toast = useToast()
 
@@ -107,13 +107,29 @@ export default function Produk() {
     try {
       const pre = await api.presignUnggah(file.name, file.type, file.size)
       await api.unggahKeS3(pre.uploadUrl, file)
+      const lama = form.gambarKey
+      const tersimpan = sedangUbah?.gambarKey || ''
       setForm((f) => ({ ...f, gambarUrl: pre.publicUrl, gambarKey: pre.key }))
+      // Ganti di form sebelum disimpan: berkas lama yang tak tersimpan langsung dihapus
+      if (lama && lama !== tersimpan && lama !== pre.key) {
+        api.hapusFoto(lama).catch(() => null)
+      }
       toast.sukses('Foto terunggah — jangan lupa Simpan Produk')
     } catch (err) {
       toast.galat(err?.message || 'Gagal mengunggah foto')
     } finally {
       setUnggahFoto(false)
     }
+  }
+
+  /** Tutup form produk + bersihkan unggahan yang batal disimpan */
+  function tutupForm() {
+    const kunciBaru = form.gambarKey
+    const kunciLama = sedangUbah?.gambarKey || ''
+    if (kunciBaru && kunciBaru !== kunciLama) {
+      api.hapusFoto(kunciBaru).catch(() => null)
+    }
+    setModal(null)
   }
 
   const persediaan = useMemo(() => nilaiPersediaan(produk), [produk])
@@ -300,6 +316,14 @@ export default function Produk() {
           <p>
             {angka(produk.length)} produk terdaftar • nilai persediaan{' '}
             {rupiah(persediaan.modal)}
+            {meta?.produk?.terpotong ? (
+              <>
+                {' '}•{' '}
+                <span className="peringatan-teks">
+                  hanya {angka(produk.length)} dari {angka(meta.produk.total)} yang tampil
+                </span>
+              </>
+            ) : null}
           </p>
         </div>
         <div className="row g6 wrap">
@@ -595,7 +619,7 @@ export default function Produk() {
       {/* ========================= Modal produk ========================= */}
       <Modal
         buka={modal === 'form'}
-        tutup={() => setModal(null)}
+        tutup={tutupForm}
         judul={sedangUbah ? 'Ubah Produk' : 'Tambah Produk'}
         keterangan={
           sedangUbah
@@ -605,7 +629,7 @@ export default function Produk() {
         ukuran="md"
         kaki={
           <>
-            <button type="button" className="btn" onClick={() => setModal(null)}>
+            <button type="button" className="btn" onClick={tutupForm}>
               Batal
             </button>
             <button type="button" className="btn btn-primer kanan" onClick={simpan}>

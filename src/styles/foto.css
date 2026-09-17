@@ -97,6 +97,13 @@
   flex: 1;
 }
 
+/* Teks peringatan data terpotong */
+
+.peringatan-teks {
+  color: #92400e;
+  font-weight: 600;
+}
+
 /* Crop foto: geser + zoom */
 
 .crop-kotak {
