@@ -55,6 +55,20 @@ const idToast = () => `tst_${Date.now().toString(36)}_${(hitungToast += 1)}`
 
 /* ------------------------------- Provider ------------------------------- */
 
+const KUNCI_SUMBER = [
+  'produk',
+  'kategori',
+  'satuan',
+  'transaksi',
+  'mutasi',
+  'pelanggan',
+  'supplier',
+  'pembelian',
+  'pengguna',
+  'pengaturan',
+  'integrasi',
+]
+
 export function AppStoreProvider({ children }) {
   const [status, setStatus] = useState(statusKosong)
   const [sesiPengguna, setSesiPengguna] = useState(null)
@@ -86,37 +100,47 @@ export function AppStoreProvider({ children }) {
   /* --------------------------- Muat dari server --------------------------- */
 
   const muatSemua = useCallback(async () => {
-    const [produk, kategori, satuan, transaksi, mutasi, pelanggan, supplier, pembelian, pengguna, pengaturan, integrasi] =
-      await Promise.all([
-        api.daftarProduk(),
-        api.daftarKategori(),
-        api.daftarSatuan(),
-        api.daftarTransaksi(),
-        api.daftarMutasi(),
-        api.daftarPelanggan(),
-        api.daftarSupplier(),
-        api.daftarPembelian(),
-        api.daftarPengguna(),
-        api.ambilPengaturan(),
-        api.statusIntegrasi(),
-      ])
-    setStatus({
-      produk: produk.produk || [],
-      kategori: kategori.kategori || [],
-      satuan: satuan.satuan || [],
-      transaksi: transaksi.transaksi || [],
-      mutasi: mutasi.mutasi || [],
-      pelanggan: pelanggan.pelanggan || [],
-      supplier: supplier.supplier || [],
-      pembelian: pembelian.pembelian || [],
-      pengguna: pengguna.pengguna || [],
-      pengaturan: pengaturan.pengaturan || { ...PENGATURAN_AWAL },
-      integrasi: integrasi.integrasi || {
-        accurate: statusIntegrasiKosong('accurate'),
-        jurnal: statusIntegrasiKosong('jurnal'),
-      },
+    const hasil = await Promise.allSettled([
+      api.daftarProduk(),
+      api.daftarKategori(),
+      api.daftarSatuan(),
+      api.daftarTransaksi(),
+      api.daftarMutasi(),
+      api.daftarPelanggan(),
+      api.daftarSupplier(),
+      api.daftarPembelian(),
+      api.daftarPengguna(),
+      api.ambilPengaturan(),
+      api.statusIntegrasi(),
+    ])
+    const patch = {}
+    const gagal = []
+    hasil.forEach((h, i) => {
+      const k = KUNCI_SUMBER[i]
+      if (h.status === 'fulfilled') {
+        const v = h.value?.[k]
+        patch[k] =
+          v ??
+          (k === 'pengaturan'
+            ? { ...PENGATURAN_AWAL }
+            : k === 'integrasi'
+              ? {
+                  accurate: statusIntegrasiKosong('accurate'),
+                  jurnal: statusIntegrasiKosong('jurnal'),
+                }
+              : [])
+      } else {
+        gagal.push(`${k} (${h.reason?.message || 'gagal'})`)
+      }
     })
-    setGalatKonek('')
+    setStatus((s) => ({ ...s, ...patch }))
+    if (gagal.some((g) => g.includes('Sesi berakhir'))) {
+      simpanToken('')
+      setSesiPengguna(null)
+      setGalatKonek('')
+      return
+    }
+    setGalatKonek(gagal.length ? `Sebagian data gagal dimuat — ${gagal.join('; ')}` : '')
   }, [])
 
   const segarkanStok = useCallback(async () => {

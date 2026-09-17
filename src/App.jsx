@@ -49,6 +49,23 @@ function PerluMasuk({ children }) {
   if (!pengguna) {
     return <Navigate to="/masuk" replace state={{ dari: lokasi.pathname }} />
   }
+  if (galatKonek) {
+    return (
+      <>
+        <div className="konek-baris" role="alert">
+          <span className="isi">{galatKonek}</span>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => window.location.reload()}
+          >
+            Muat ulang
+          </button>
+        </div>
+        {children}
+      </>
+    )
+  }
   return children
 }
 
