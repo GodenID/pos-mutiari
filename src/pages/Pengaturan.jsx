@@ -30,7 +30,9 @@ export default function Pengaturan() {
   const toast = useToast()
 
   const [form, setForm] = useState(pengaturan)
-  const [konfirmasi, setKonfirmasi] = useState(null) // 'demo' | 'kosong'
+  const [konfirmasi, setKonfirmasi] = useState(null) // 'kosong' | null
+  const [ketikHapus, setKetikHapus] = useState('')
+  const [sibukHapus, setSibukHapus] = useState(false)
   const [formPengguna, setFormPengguna] = useState(false)
   const [penggunaUbah, setPenggunaUbah] = useState(null)
   const [integrasiAktif, setIntegrasiAktif] = useState(null) // 'accurate' | 'jurnal' | null
@@ -38,6 +40,28 @@ export default function Pengaturan() {
   const penggunaBaru = () => {
     setPenggunaUbah(null)
     setFormPengguna(true)
+  }
+
+  const KODE_HAPUS = 'YA SAYA MAU HAPUS SEMUANYA'
+
+  const tutupHapus = () => {
+    setKonfirmasi(null)
+    setKetikHapus('')
+  }
+
+  async function eksekusiKosongkan() {
+    if (ketikHapus.trim() !== KODE_HAPUS || sibukHapus) return
+    setSibukHapus(true)
+    try {
+      await aksi.kosongkanData()
+      setForm(PENGATURAN_AWAL)
+      toast.info('Semua data dikosongkan')
+      tutupHapus()
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal mengosongkan data')
+    } finally {
+      setSibukHapus(false)
+    }
   }
 
   const berubah = useMemo(
@@ -362,14 +386,6 @@ export default function Pengaturan() {
               <div className="row g6 wrap">
                 <button
                   type="button"
-                  className="btn"
-                  onClick={() => setKonfirmasi('demo')}
-                >
-                  <Icon nama="muat-ulang" ukuran={15} />
-                  Muat Ulang Data Demo
-                </button>
-                <button
-                  type="button"
                   className="btn btn-bahaya"
                   onClick={() => setKonfirmasi('kosong')}
                 >
@@ -471,43 +487,50 @@ export default function Pengaturan() {
         tutup={() => setIntegrasiAktif(null)}
       />
 
-      <Konfirmasi
-        buka={konfirmasi === 'demo'}
-        tutup={() => setKonfirmasi(null)}
-        judul="Muat ulang data demo?"
-        labelSetuju="Ya, muat data demo"
-        pesan="Semua data saat ini akan diganti dengan data contoh (38 produk, kategori, satuan, supplier, pelanggan). Riwayat transaksi tidak ikut dibuat — dasbor mulai dari kosong. Tindakan ini tidak dapat dibatalkan."
-        bahaya
-        onSetuju={async () => {
-          try {
-            await aksi.muatDemo()
-            setForm(PENGATURAN_AWAL)
-            toast.sukses('Data demo dimuat ulang')
-          } catch (e) {
-            toast.galat(e?.message || 'Gagal memuat data demo')
-          }
-          setKonfirmasi(null)
-        }}
-      />
-
-      <Konfirmasi
+      <Modal
         buka={konfirmasi === 'kosong'}
-        tutup={() => setKonfirmasi(null)}
+        tutup={tutupHapus}
         judul="Kosongkan semua data?"
-        labelSetuju="Ya, kosongkan"
-        pesan="Seluruh produk, transaksi, dan riwayat mutasi akan dihapus permanen. Anda akan mulai dari toko kosong. Tindakan ini tidak dapat dibatalkan."
-        bahaya
-        onSetuju={async () => {
-          try {
-            await aksi.kosongkanData()
-            setForm(PENGATURAN_AWAL)
-            toast.info('Semua data dikosongkan')
-          } catch (e) {
-            toast.galat(e?.message || 'Gagal mengosongkan data')
-          }
-          setKonfirmasi(null)
-        }}
-      />
+        ukuran="sm"
+        kaki={
+          <>
+            <button type="button" className="btn" onClick={tutupHapus}>
+              Batal
+            </button>
+            <button
+              type="button"
+              className="btn btn-bahaya-isi kanan"
+              disabled={ketikHapus.trim() !== KODE_HAPUS || sibukHapus}
+              onClick={eksekusiKosongkan}
+            >
+              {sibukHapus ? 'Menghapus…' : 'Ya, hapus semuanya'}
+            </button>
+          </>
+        }
+      >
+        <div className="col g12">
+          <div className="info-box info-box-merah">
+            <Icon nama="peringatan" ukuran={16} />
+            <span>
+              Seluruh produk, transaksi, dan riwayat mutasi akan dihapus permanen.
+              Anda akan mulai dari toko kosong. Tindakan ini tidak dapat dibatalkan.
+            </span>
+          </div>
+          <Bidang
+            label="Kode pengaman"
+            petunjuk={`Ketik persis (huruf besar semua): ${KODE_HAPUS}`}
+          >
+            <input
+              className="inp"
+              value={ketikHapus}
+              onChange={(e) => setKetikHapus(e.target.value)}
+              placeholder={KODE_HAPUS}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </Bidang>
+        </div>
+      </Modal>
     </div>
   )
 }
