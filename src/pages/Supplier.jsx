@@ -426,11 +426,18 @@ function TabPembelian() {
 
 /* ------------------------------ Form PO -------------------------------- */
 
+const BARIS_PO_KOSONG = () => ({ produkId: '', cari: '', qty: '', hargaBeli: '' })
+
 function ModalFormPO({ buka, tutup, onSimpan }) {
   const { produk, supplier } = useStatus()
+  const aksi = useAksi()
+  const toast = useToast()
 
   const [supplierId, setSupplierId] = useState('')
-  const [baris, setBaris] = useState([{ produkId: '', qty: '', hargaBeli: '' }])
+  const [cariSup, setCariSup] = useState('')
+  const [supBuka, setSupBuka] = useState(false)
+  const [baris, setBaris] = useState([BARIS_PO_KOSONG()])
+  const [barisBuka, setBarisBuka] = useState(null)
   const [keterangan, setKeterangan] = useState('')
 
   const produkAktif = useMemo(
@@ -443,22 +450,71 @@ function ModalFormPO({ buka, tutup, onSimpan }) {
   if (buka && !siap) {
     setSiap(true)
     setSupplierId(supplier[0]?.id || '')
-    setBaris([{ produkId: '', qty: '', hargaBeli: '' }])
+    setCariSup(supplier[0]?.nama || '')
+    setBaris([BARIS_PO_KOSONG()])
+    setBarisBuka(null)
     setKeterangan('')
   }
   if (!buka && siap) setSiap(false)
 
   const petaProduk = useMemo(() => new Map(produk.map((p) => [p.id, p])), [produk])
 
+  const supTerpilih = supplier.find((s) => s.id === supplierId) || null
+
+  const supCocok = useMemo(() => {
+    const q = cariSup.trim().toLowerCase()
+    if (!q) return supplier.slice(0, 8)
+    return supplier.filter((s) => s.nama.toLowerCase().includes(q)).slice(0, 8)
+  }, [supplier, cariSup])
+
+  const supBaru =
+    cariSup.trim() &&
+    !supplier.some((s) => s.nama.toLowerCase() === cariSup.trim().toLowerCase())
+
+  async function buatSupplierBaru() {
+    const nama = cariSup.trim()
+    if (!nama) return
+    try {
+      const baru = await aksi.tambahSupplier({
+        nama,
+        telepon: '',
+        alamat: '',
+        catatan: 'Dibuat dari form pembelian',
+      })
+      setSupplierId(baru.id)
+      setCariSup(baru.nama)
+      setSupBuka(false)
+      toast.sukses(`Supplier "${baru.nama}" dibuat`)
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal membuat supplier')
+    }
+  }
+
   const pilihProduk = (indeks, produkId) => {
     const p = petaProduk.get(produkId)
     setBaris((daftar) =>
       daftar.map((b, i) =>
         i === indeks
-          ? { ...b, produkId, hargaBeli: p ? p.hargaBeli : b.hargaBeli }
+          ? { ...b, produkId, cari: p ? p.nama : b.cari, hargaBeli: p ? p.hargaBeli : b.hargaBeli }
           : b,
       ),
     )
+    setBarisBuka(null)
+  }
+
+  /** Saran produk baris ke-indeks (sudah ada saja, kecuali yang terpakai di baris lain) */
+  const saranProduk = (indeks, q) => {
+    const query = String(q || '').trim().toLowerCase()
+    const dipakai = new Set(
+      baris.map((b, j) => (j === indeks ? null : b.produkId)).filter(Boolean),
+    )
+    const dasar = produkAktif.filter((x) => !dipakai.has(x.id))
+    if (!query) return dasar.slice(0, 8)
+    return dasar
+      .filter(
+        (x) => x.nama.toLowerCase().includes(query) || x.sku.toLowerCase().includes(query),
+      )
+      .slice(0, 8)
   }
 
   const total = baris.reduce(
@@ -511,25 +567,85 @@ function ModalFormPO({ buka, tutup, onSimpan }) {
             label="Supplier"
             wajib
             penuh
-            petunjuk={
-              supplier.length
-                ? undefined
-                : 'Belum ada supplier — daftarkan dulu di tab Master Supplier'
-            }
+            petunjuk="Ketik untuk mencari — bila belum ada, buat langsung dari sini"
           >
-            <select
-              className="sel"
-              data-fokus-awal
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-            >
-              <option value="">— pilih supplier —</option>
-              {supplier.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nama}
-                </option>
-              ))}
-            </select>
+            <div className="cari">
+              <Icon nama="cari" ukuran={15} />
+              <input
+                type="search"
+                className="inp"
+                data-fokus-awal
+                value={cariSup}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setCariSup(v)
+                  setSupBuka(true)
+                  if (supTerpilih && v !== supTerpilih.nama) setSupplierId('')
+                }}
+                onFocus={() => setSupBuka(true)}
+                onBlur={() => setTimeout(() => setSupBuka(false), 150)}
+                placeholder="Ketik nama supplier…"
+                aria-label="Supplier"
+              />
+              {cariSup ? (
+                <button
+                  type="button"
+                  className="cari-bersih"
+                  onClick={() => {
+                    setCariSup('')
+                    setSupplierId('')
+                  }}
+                  aria-label="Hapus supplier"
+                >
+                  <Icon nama="tutup" ukuran={13} />
+                </button>
+              ) : null}
+            </div>
+            {supBuka ? (
+              <div className="plg-saran" style={{ marginTop: 6 }}>
+                {supCocok.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="plg-saran-baris"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setSupplierId(s.id)
+                      setCariSup(s.nama)
+                      setSupBuka(false)
+                    }}
+                  >
+                    <span className="isi">
+                      <span className="sm tebal">{s.nama}</span>
+                      {s.telepon ? (
+                        <span className="xs muted num"> • {s.telepon}</span>
+                      ) : null}
+                    </span>
+                    <Icon nama="kanan" ukuran={13} />
+                  </button>
+                ))}
+                {supBaru ? (
+                  <button
+                    type="button"
+                    className="plg-saran-baris"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={buatSupplierBaru}
+                  >
+                    <span className="isi">
+                      <Icon nama="tambah" ukuran={13} />
+                      {' Buat supplier baru “'}
+                      <b>{cariSup.trim()}</b>
+                      {'”'}
+                    </span>
+                  </button>
+                ) : null}
+                {!supCocok.length && !supBaru ? (
+                  <div className="xs muted" style={{ padding: '6px 10px' }}>
+                    Belum ada supplier tersimpan.
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </Bidang>
           <Bidang label="Keterangan" penuh petunjuk="Opsional, mis. no. faktur supplier">
             <input
@@ -544,21 +660,75 @@ function ModalFormPO({ buka, tutup, onSimpan }) {
         <div className="col g8">
           {baris.map((b, i) => {
             const p = petaProduk.get(b.produkId)
+            const saran = saranProduk(i, b.cari)
             return (
               <div className="po-baris" key={i}>
-                <select
-                  className="sel isi"
-                  value={b.produkId}
-                  onChange={(e) => pilihProduk(i, e.target.value)}
-                  aria-label={`Produk baris ${i + 1}`}
-                >
-                  <option value="">— pilih produk —</option>
-                  {produkAktif.map((x) => (
-                    <option key={x.id} value={x.id}>
-                      {x.nama} (stok {x.stok})
-                    </option>
-                  ))}
-                </select>
+                <div className="isi" style={{ minWidth: 0 }}>
+                  <div className="cari">
+                    <Icon nama="cari" ukuran={14} />
+                    <input
+                      className="inp"
+                      value={b.cari}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setBaris((d) =>
+                          d.map((r, j) =>
+                            j === i
+                              ? {
+                                  ...r,
+                                  cari: v,
+                                  produkId:
+                                    r.produkId && petaProduk.get(r.produkId)?.nama === v
+                                      ? r.produkId
+                                      : '',
+                                }
+                              : r,
+                          ),
+                        )
+                        setBarisBuka(i)
+                      }}
+                      onFocus={() => setBarisBuka(i)}
+                      onBlur={() => setBarisBuka((n) => (n === i ? null : n))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const cocok = saranProduk(i, b.cari)
+                          if (cocok.length) pilihProduk(i, cocok[0].id)
+                        }
+                      }}
+                      placeholder="Ketik nama / barcode produk…"
+                      aria-label={`Produk baris ${i + 1}`}
+                    />
+                  </div>
+                  {barisBuka === i ? (
+                    <div className="plg-saran" style={{ marginTop: 6 }}>
+                      {saran.map((x) => (
+                        <button
+                          key={x.id}
+                          type="button"
+                          className="plg-saran-baris"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pilihProduk(i, x.id)}
+                        >
+                          <span className="isi">
+                            <span className="sm tebal">{x.nama}</span>
+                            <span className="xs muted num">
+                              {' '}• stok {x.stok} {x.satuan}
+                            </span>
+                          </span>
+                          <span className="xs muted num">{rupiah(x.hargaBeli)}</span>
+                        </button>
+                      ))}
+                      {!saran.length ? (
+                        <div className="xs muted" style={{ padding: '6px 10px' }}>
+                          {b.cari.trim()
+                            ? 'Tidak ada produk yang cocok — daftarkan dulu di halaman Produk.'
+                            : 'Belum ada produk aktif.'}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
                 <div style={{ width: 110, flex: 'none' }}>
                   <InpAngka
                     nilai={b.qty}
@@ -594,7 +764,7 @@ function ModalFormPO({ buka, tutup, onSimpan }) {
           <button
             type="button"
             className="btn btn-sm"
-            onClick={() => setBaris((d) => [...d, { produkId: '', qty: '', hargaBeli: '' }])}
+            onClick={() => setBaris((d) => [...d, BARIS_PO_KOSONG()])}
           >
             <Icon nama="tambah" ukuran={14} />
             Tambah baris

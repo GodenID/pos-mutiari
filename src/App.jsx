@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import Layout from './components/Layout.jsx'
@@ -18,6 +19,7 @@ import { useSesi, useStatus } from './store/konteks.js'
 function PerluMasuk({ children }) {
   const { pengguna } = useSesi()
   const { memuat, galatKonek } = useStatus()
+  const [abaikan, setAbaikan] = useState('')
   const lokasi = useLocation()
   if (memuat) {
     return (
@@ -49,7 +51,7 @@ function PerluMasuk({ children }) {
   if (!pengguna) {
     return <Navigate to="/masuk" replace state={{ dari: lokasi.pathname }} />
   }
-  if (galatKonek) {
+  if (galatKonek && galatKonek !== abaikan) {
     return (
       <>
         <div className="konek-baris" role="alert">
@@ -60,6 +62,14 @@ function PerluMasuk({ children }) {
             onClick={() => window.location.reload()}
           >
             Muat ulang
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setAbaikan(galatKonek)}
+            aria-label="Tutup peringatan"
+          >
+            Tutup
           </button>
         </div>
         {children}
