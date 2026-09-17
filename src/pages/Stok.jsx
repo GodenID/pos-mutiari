@@ -25,7 +25,8 @@ import {
 import { useAksi, useStatus, useToast } from '../store/konteks.js'
 import { nilaiPersediaan, statusStok } from '../lib/analitik.js'
 import { angka, jam, rupiah, rupiahSingkat, tanggal, tanggalJam } from '../lib/format.js'
-import { stempelFile, unduhCsv } from '../lib/csv.js'
+import { stempelFile } from '../lib/csv.js'
+import { unduhXls } from '../lib/xls.js'
 
 const PER_HALAMAN = 12
 
@@ -130,8 +131,9 @@ function TabPersediaan() {
     halamanAman * PER_HALAMAN,
   )
 
-  const eksporCsv = () => {
-    unduhCsv(
+  const eksporXls = async () => {
+    try {
+      await unduhXls(
       `laporan_stok_${stempelFile()}`,
       [
         'Barcode/SKU',
@@ -164,8 +166,12 @@ function TabPersediaan() {
         `Nilai modal total: ${rupiah(persediaan.modal)}`,
         `Dicetak ${tanggalJam(new Date())}`,
       ],
-    )
-    toast.sukses('Laporan stok diekspor ke CSV')
+      )
+    } catch {
+      toast.galat('Gagal mengekspor ke Excel')
+      return
+    }
+    toast.sukses('Laporan stok diekspor ke Excel')
   }
 
   return (
@@ -257,7 +263,7 @@ function TabPersediaan() {
               <Icon nama="truk" ukuran={15} />
               <span className="hanya-desktop">Beli dari Supplier</span>
             </Link>
-            <button type="button" className="btn" onClick={eksporCsv}>
+            <button type="button" className="btn" onClick={eksporXls}>
               <Icon nama="unduh" ukuran={15} />
               <span className="hanya-desktop">Ekspor</span>
             </button>
@@ -763,8 +769,9 @@ function TabRiwayat() {
     return hasil
   }, [mutasi])
 
-  const eksporCsv = () => {
-    unduhCsv(
+  const eksporXls = async () => {
+    try {
+      await unduhXls(
       `mutasi_stok_${stempelFile()}`,
       ['Tanggal', 'Jam', 'Produk', 'Jenis', 'Qty', 'Keterangan', 'Referensi', 'Petugas'],
       tersaring.map((m) => [
@@ -778,8 +785,12 @@ function TabRiwayat() {
         m.petugas,
       ]),
       [`Riwayat Mutasi Stok — ${tersaring.length} baris`, `Dicetak ${tanggalJam(new Date())}`],
-    )
-    toast.sukses('Riwayat mutasi diekspor ke CSV')
+      )
+    } catch {
+      toast.galat('Gagal mengekspor ke Excel')
+      return
+    }
+    toast.sukses('Riwayat mutasi diekspor ke Excel')
   }
 
   return (
@@ -847,9 +858,9 @@ function TabRiwayat() {
               </option>
             ))}
           </select>
-          <button type="button" className="btn kanan" onClick={eksporCsv}>
+          <button type="button" className="btn kanan" onClick={eksporXls}>
             <Icon nama="unduh" ukuran={15} />
-            <span className="hanya-desktop">Ekspor CSV</span>
+            <span className="hanya-desktop">Ekspor XLS</span>
           </button>
         </div>
 

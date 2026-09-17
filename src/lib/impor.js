@@ -4,7 +4,7 @@
    ========================================================================= */
 
 import { keAngka } from './format.js'
-import { unduhCsv } from './csv.js'
+import { unduhXls } from './xls.js'
 
 /* ------------------------------ Template ------------------------------- */
 
@@ -25,20 +25,11 @@ const CONTOH_BARIS = [
   ['', 'Teh Botol Sosro 450ml', 'Minuman', 'botol', 3000, 4000, 0, 12, 'Dijual'],
 ]
 
-export function unduhTemplateCsv() {
-  unduhCsv(`template_impor_produk`, KOLOM_TEMPLATE, CONTOH_BARIS, [
+export async function unduhTemplateExcel() {
+  await unduhXls(`template_impor_produk`, KOLOM_TEMPLATE, CONTOH_BARIS, [
     'Template impor produk — baris contoh boleh dihapus. Kolom "Nama Produk", "Kategori", dan "Harga Jual" wajib diisi.',
     'SKU kosong = dibuat otomatis. Status: Dijual / Nonaktif.',
   ])
-}
-
-export async function unduhTemplateExcel() {
-  const XLSX = await import('xlsx')
-  const lembar = XLSX.utils.aoa_to_sheet([KOLOM_TEMPLATE, ...CONTOH_BARIS])
-  lembar['!cols'] = [16, 28, 18, 10, 12, 12, 8, 10, 12]
-  const buku = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(buku, lembar, 'Produk')
-  XLSX.writeFile(buku, 'template_impor_produk.xlsx')
 }
 
 /* ---------------------------- Parser CSV ------------------------------- */

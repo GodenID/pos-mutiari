@@ -33,7 +33,8 @@ import {
   tanggalJam,
   tanggalPanjang,
 } from '../lib/format.js'
-import { stempelFile, unduhCsv } from '../lib/csv.js'
+import { stempelFile } from '../lib/csv.js'
+import { unduhXls } from '../lib/xls.js'
 
 const PER_HALAMAN = 15
 
@@ -116,8 +117,9 @@ export default function Penjualan() {
       `Struk ${detail?.nomor || ''}`,
     )
 
-  const eksporCsv = () => {
-    unduhCsv(
+  const eksporXls = async () => {
+    try {
+      await unduhXls(
       `penjualan_${stempelFile()}`,
       [
         'No. Nota',
@@ -164,8 +166,12 @@ export default function Penjualan() {
         `${tersaring.length} transaksi • omzet ${rupiah(r.omzet)}`,
         `Dicetak ${tanggalJam(new Date())}`,
       ],
-    )
-    toast.sukses('Data penjualan diekspor ke CSV')
+      )
+    } catch {
+      toast.galat('Gagal mengekspor ke Excel')
+      return
+    }
+    toast.sukses('Data penjualan diekspor ke Excel')
   }
 
   return (
@@ -175,9 +181,9 @@ export default function Penjualan() {
           <h1>Penjualan</h1>
           <p>{rentang.label}</p>
         </div>
-        <button type="button" className="btn" onClick={eksporCsv}>
+        <button type="button" className="btn" onClick={eksporXls}>
           <Icon nama="unduh" ukuran={15} />
-          Ekspor CSV
+          Ekspor XLS
         </button>
       </div>
 

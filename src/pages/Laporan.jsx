@@ -1,6 +1,6 @@
 /* =========================================================================
    Laporan — ringkasan periode, laba kotor, produk terlaris, dan persediaan.
-   Semua tab bisa dicetak (lembar A4) dan diekspor ke CSV.
+   Semua tab bisa dicetak (lembar A4) dan diekspor ke XLS.
    ========================================================================= */
 
 import { useMemo, useRef, useState } from 'react'
@@ -38,7 +38,8 @@ import {
   tanggal,
   tanggalJam,
 } from '../lib/format.js'
-import { stempelFile, unduhCsv } from '../lib/csv.js'
+import { stempelFile } from '../lib/csv.js'
+import { unduhXls } from '../lib/xls.js'
 
 const TAB = [
   { id: 'ringkasan', nama: 'Ringkasan' },
@@ -111,16 +112,17 @@ export default function Laporan() {
       `Laporan ${judulTab} — ${pengaturan.namaToko}`,
     )
 
-  const ekspor = () => {
+  const ekspor = async () => {
+    try {
     if (tab === 'produk') {
-      unduhCsv(
+      await unduhXls(
         `produk_terlaris_${stempelFile()}`,
         ['Peringkat', 'SKU', 'Produk', 'Qty Terjual', 'Omzet', 'Laba Kotor'],
         data.terlaris.map((p, i) => [i + 1, p.sku, p.nama, p.qty, p.omzet, p.laba]),
         [`Produk Terlaris — ${rentang.label}`, `Dicetak ${tanggalJam(new Date())}`],
       )
     } else if (tab === 'laba') {
-      unduhCsv(
+      await unduhXls(
         `laba_kotor_${stempelFile()}`,
         ['Tanggal', 'Transaksi', 'Item Terjual', 'Omzet', 'Laba Kotor'],
         data.harian.map((d) => [
@@ -133,7 +135,7 @@ export default function Laporan() {
         [`Laba Kotor Harian — ${rentang.label}`, `Dicetak ${tanggalJam(new Date())}`],
       )
     } else if (tab === 'stok') {
-      unduhCsv(
+      await unduhXls(
         `persediaan_${stempelFile()}`,
         [
           'SKU',
@@ -167,7 +169,7 @@ export default function Laporan() {
         ],
       )
     } else {
-      unduhCsv(
+      await unduhXls(
         `ringkasan_penjualan_${stempelFile()}`,
         ['Tanggal', 'Transaksi', 'Item', 'Omzet', 'Laba Kotor'],
         data.harian.map((d) => [
@@ -184,7 +186,11 @@ export default function Laporan() {
         ],
       )
     }
-    toast.sukses('Laporan diekspor ke CSV')
+    } catch {
+      toast.galat('Gagal mengekspor ke Excel')
+      return
+    }
+    toast.sukses('Laporan diekspor ke Excel')
   }
 
   return (
@@ -203,7 +209,7 @@ export default function Laporan() {
           </button>
           <button type="button" className="btn btn-primer" onClick={ekspor}>
             <Icon nama="unduh" ukuran={15} />
-            Ekspor CSV
+            Ekspor XLS
           </button>
         </div>
       </div>

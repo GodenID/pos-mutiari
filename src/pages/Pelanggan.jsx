@@ -27,7 +27,8 @@ import {
   tanggalJam,
   waktuRelatif,
 } from '../lib/format.js'
-import { stempelFile, unduhCsv } from '../lib/csv.js'
+import { stempelFile } from '../lib/csv.js'
+import { unduhXls } from '../lib/xls.js'
 
 const PER_HALAMAN = 12
 
@@ -163,8 +164,9 @@ export default function Pelanggan() {
     }
   }
 
-  function eksporCsv() {
-    unduhCsv(
+  async function eksporXls() {
+    try {
+      await unduhXls(
       `pelanggan_${stempelFile()}`,
       [
         'Nama',
@@ -185,8 +187,12 @@ export default function Pelanggan() {
         p.terakhir ? tanggalJam(p.terakhir) : '-',
       ]),
       [`Daftar Pelanggan — ${baris.length} data`, `Diekspor ${tanggalJam(new Date())}`],
-    )
-    toast.sukses('Data pelanggan diekspor ke CSV')
+      )
+    } catch {
+      toast.galat('Gagal mengekspor ke Excel')
+      return
+    }
+    toast.sukses('Data pelanggan diekspor ke Excel')
   }
 
   const detail = detailId ? pelanggan.find((p) => p.id === detailId) : null
@@ -202,9 +208,9 @@ export default function Pelanggan() {
           </p>
         </div>
         <div className="row g6 wrap">
-          <button type="button" className="btn" onClick={eksporCsv}>
+          <button type="button" className="btn" onClick={eksporXls}>
             <Icon nama="unduh" ukuran={15} />
-            <span className="hanya-desktop">Ekspor CSV</span>
+            <span className="hanya-desktop">Ekspor XLS</span>
           </button>
           <button type="button" className="btn btn-primer" onClick={bukaTambah}>
             <Icon nama="tambah" ukuran={15} />

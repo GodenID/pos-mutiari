@@ -28,10 +28,10 @@ import { api } from '../lib/api.js'
 import { marginProduk, nilaiPersediaan, statusStok } from '../lib/analitik.js'
 import { SATUAN } from '../data/seed.js'
 import { angka, keAngka, persen, rupiah, rupiahSingkat, tanggalJam } from '../lib/format.js'
-import { stempelFile, unduhCsv } from '../lib/csv.js'
+import { stempelFile } from '../lib/csv.js'
+import { unduhXls } from '../lib/xls.js'
 import {
   bacaFileProduk,
-  unduhTemplateCsv,
   unduhTemplateExcel,
   validasiBarisImpor,
 } from '../lib/impor.js'
@@ -267,8 +267,9 @@ export default function Produk() {
     }
   }
 
-  function eksporCsv() {
-    unduhCsv(
+  async function eksporXls() {
+    try {
+      await unduhXls(
       `produk_${stempelFile()}`,
       [
         'Barcode/SKU',
@@ -297,8 +298,12 @@ export default function Produk() {
         p.aktif === false ? 'Nonaktif' : 'Dijual',
       ]),
       [`Daftar Produk — ${tersaring.length} data`, `Diekspor ${tanggalJam(new Date())}`],
-    )
-    toast.sukses('Data produk diekspor ke CSV')
+      )
+    } catch {
+      toast.galat('Gagal mengekspor ke Excel')
+      return
+    }
+    toast.sukses('Data produk diekspor ke Excel')
   }
 
   const marginForm =
@@ -335,9 +340,9 @@ export default function Produk() {
             <Icon nama="masuk" ukuran={15} />
             <span className="hanya-desktop">Impor</span>
           </button>
-          <button type="button" className="btn" onClick={eksporCsv}>
+          <button type="button" className="btn" onClick={eksporXls}>
             <Icon nama="unduh" ukuran={15} />
-            <span className="hanya-desktop">Ekspor CSV</span>
+            <span className="hanya-desktop">Ekspor XLS</span>
           </button>
           <button type="button" className="btn btn-primer" onClick={bukaTambah}>
             <Icon nama="tambah" ukuran={15} />
@@ -956,10 +961,6 @@ function ModalImpor({ tutup }) {
       <div className="col g12">
         <div className="row g6 wrap">
           <span className="xs muted">Belum punya formatnya?</span>
-          <button type="button" className="btn btn-sm" onClick={unduhTemplateCsv}>
-            <Icon nama="unduh" ukuran={13} />
-            Template CSV
-          </button>
           <button type="button" className="btn btn-sm" onClick={() => unduhTemplateExcel()}>
             <Icon nama="unduh" ukuran={13} />
             Template Excel

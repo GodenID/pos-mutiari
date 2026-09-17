@@ -112,6 +112,15 @@ app.put('/:id', async (c) => {
   const stokBaru = d.stok !== undefined ? Math.round(Number(d.stok)) : lama.stok
   const berubah = stokBaru !== lama.stok
 
+  // SKU kembar dicek manual agar pesannya ramah (bukan 500 generik)
+  if (d.sku !== undefined) {
+    const skuBaru = String(d.sku).trim() || lama.sku
+    if (skuBaru !== lama.sku) {
+      const bentrok = await db.product.findUnique({ where: { sku: skuBaru } })
+      if (bentrok) return c.json({ error: `Barcode sudah dipakai produk "${bentrok.nama}"` }, 409)
+    }
+  }
+
   const produk = await db.$transaction(async (tx) => {
     const p = await tx.product.update({
       where: { id },

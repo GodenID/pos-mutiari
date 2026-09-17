@@ -37,7 +37,8 @@ import {
   tanggalJam,
   waktuRelatif,
 } from '../lib/format.js'
-import { stempelFile, unduhCsv } from '../lib/csv.js'
+import { stempelFile } from '../lib/csv.js'
+import { unduhXls } from '../lib/xls.js'
 
 const PER_HALAMAN = 12
 
@@ -124,8 +125,9 @@ function TabPembelian() {
     halamanAman * PER_HALAMAN,
   )
 
-  const eksporCsv = () => {
-    unduhCsv(
+  const eksporXls = async () => {
+    try {
+      await unduhXls(
       `pembelian_${stempelFile()}`,
       ['No. PO', 'Tanggal', 'Supplier', 'Jenis Item', 'Total Qty', 'Total Belanja', 'Petugas'],
       tersaring.map((p) => [
@@ -138,8 +140,12 @@ function TabPembelian() {
         p.petugas,
       ]),
       [`Riwayat Pembelian — ${tersaring.length} PO`, `Diekspor ${tanggalJam(new Date())}`],
-    )
-    toast.sukses('Data pembelian diekspor ke CSV')
+      )
+    } catch {
+      toast.galat('Gagal mengekspor ke Excel')
+      return
+    }
+    toast.sukses('Data pembelian diekspor ke Excel')
   }
 
   return (
@@ -214,7 +220,7 @@ function TabPembelian() {
             ))}
           </select>
           <div className="row g6 kanan">
-            <button type="button" className="btn" onClick={eksporCsv}>
+            <button type="button" className="btn" onClick={eksporXls}>
               <Icon nama="unduh" ukuran={15} />
               <span className="hanya-desktop">Ekspor</span>
             </button>

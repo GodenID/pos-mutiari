@@ -92,20 +92,51 @@ async function simpanTokenAccurate(data) {
   })
 }
 
-async function denganRefresh(ctx, fn) {
+async function segarkanAkses(ctx) {
+  const refresh = dekrip(ctx.rec.refreshEnc)
+  if (!refresh) throw new Error('Refresh token Accurate habis — otorisasi ulang di Pengaturan')
+  const data = await segarkanToken({
+    clientId: ctx.rec.clientId,
+    clientSecret: ctx.secret,
+    refreshToken: refresh,
+  })
+  ctx.access = data.access_token
+  await simpanTokenAccurate(data)
+  return ctx.access
+}
+
+/** Panggilan level akun (db-list): gagal → refresh token → coba sekali lagi. */
+async function denganTokenSegar(ctx, fn) {
   try {
     return await fn(ctx.access)
-  } catch (e) {
-    const refresh = dekrip(ctx.rec.refreshEnc)
-    if (!refresh) throw e
-    const data = await segarkanToken({
-      clientId: ctx.rec.clientId,
-      clientSecret: ctx.secret,
-      refreshToken: refresh,
+  } catch {
+    const access = await segarkanAkses(ctx)
+    return fn(access)
+  }
+}
+
+/** Panggilan level data (butuh session): gagal → refresh token +
+    buka ulang database → coba sekali lagi. Tanpa Buka DB manual. */
+async function denganSesiSegar(ctx, fn) {
+  try {
+    return await fn(panggilAcc(ctx, ctx.access))
+  } catch (e1) {
+    if (!ctx.extra.dbId) {
+      try {
+        const access = await segarkanAkses(ctx)
+        return await fn(panggilAcc(ctx, access))
+      } catch {
+        throw e1
+      }
+    }
+    const access = await segarkanAkses(ctx)
+    const sesi = await openDb(access, ctx.extra.dbId)
+    ctx.extra = { ...ctx.extra, session: sesi.session, host: sesi.host }
+    await db.integration.update({
+      where: { provider: 'accurate' },
+      data: { extra: ctx.extra, status: 'terhubung', lastCheck: new Date(), lastError: '' },
     })
-    ctx.access = data.access_token
-    await simpanTokenAccurate(data)
-    return fn(ctx.access)
+    return fn(panggilAcc(ctx, access))
   }
 }
 
@@ -268,7 +299,7 @@ app.get('/accurate/callback', async (c) => {
 app.get('/accurate/db', authRequired, async (c) => {
   try {
     const ctx = await konteksAccurate()
-    const daftar = await denganRefresh(ctx, (token) => dbList(token))
+    const daftar = await denganTokenSegar(ctx, (token) => dbList(token))
     return c.json({ database: daftar.map((d) => ({ id: String(d.id), alias: d.alias || '' })) })
   } catch (e) {
     return c.json({ error: e?.message || 'Gagal membaca database' }, 400)
@@ -281,7 +312,7 @@ app.post('/accurate/buka-db', authRequired, adminOnly, async (c) => {
   if (!dbId) return c.json({ error: 'Pilih database dulu' }, 400)
   try {
     const ctx = await konteksAccurate()
-    const { daftar, sesi } = await denganRefresh(ctx, async (token) => ({
+    const { daftar, sesi } = await denganTokenSegar(ctx, async (token) => ({
       daftar: await dbList(token).catch(() => []),
       sesi: await openDb(token, dbId),
     }))
@@ -312,8 +343,7 @@ app.post('/accurate/kirim/:saleId', authRequired, async (c) => {
     if (!ctx.extra.session || !ctx.extra.host) {
       return c.json({ error: 'Buka database Accurate dulu di Pengaturan' }, 400)
     }
-    const hasil = await denganRefresh(ctx, async (token) => {
-      const call = panggilAcc({ ...ctx, extra: ctx.extra }, token)
+    const hasil = await denganSesiSegar(ctx, async (call) => {
       const customerNo = await noCustomer(call, (sale.pelanggan || '').trim() || 'Pelanggan Umum')
       const form = {
         transDate: formatTanggalAccurate(sale.tanggal),
@@ -330,6 +360,10 @@ app.post('/accurate/kirim/:saleId', authRequired, async (c) => {
       pastikanSukses(res.data, 'menyimpan faktur')
       return res.data.r
     })
+    await db.integration.update({
+      where: { provider: 'accurate' },
+      data: { lastCheck: new Date(), lastError: '' },
+    }).catch(() => null)
     return c.json({ ok: true, faktur: { nomor: hasil?.no || '', id: hasil?.id || '' } })
   } catch (e) {
     return c.json({ error: e?.message || 'Gagal mengirim faktur' }, 400)
@@ -343,17 +377,13 @@ app.post('/:provider/uji', authRequired, async (c) => {
     if (provider === 'accurate') {
       const ctx = await konteksAccurate()
       if (ctx.extra.session && ctx.extra.host) {
-        await denganRefresh(ctx, (token) =>
-          panggilData({
-            host: ctx.extra.host,
-            session: ctx.extra.session,
-            token,
-            path: '/accurate/api/item/list.do',
-            query: { fields: 'id', pageSize: '1' },
-          }).then((r) => pastikanSukses(r.data, 'uji koneksi')),
+        await denganSesiSegar(ctx, (call) =>
+          call('/accurate/api/item/list.do', { query: { fields: 'id', pageSize: '1' } }).then((r) =>
+            pastikanSukses(r.data, 'uji koneksi'),
+          ),
         )
       } else {
-        await denganRefresh(ctx, (token) => dbList(token))
+        await denganTokenSegar(ctx, (token) => dbList(token))
       }
     } else {
       const rec = await ambil('jurnal')
