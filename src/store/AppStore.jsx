@@ -26,6 +26,27 @@ function statusKosong() {
     pembelian: [],
     pengguna: [],
     pengaturan: { ...PENGATURAN_AWAL },
+    integrasi: {
+      accurate: statusIntegrasiKosong('accurate'),
+      jurnal: statusIntegrasiKosong('jurnal'),
+    },
+  }
+}
+
+function statusIntegrasiKosong(provider) {
+  return {
+    provider,
+    dikonfigurasi: false,
+    clientIdTampil: '',
+    terhubung: false,
+    status: 'belum',
+    redirectUri: '',
+    dbId: '',
+    dbAlias: '',
+    perusahaan: '',
+    sandbox: false,
+    lastCheck: null,
+    lastError: '',
   }
 }
 
@@ -65,7 +86,7 @@ export function AppStoreProvider({ children }) {
   /* --------------------------- Muat dari server --------------------------- */
 
   const muatSemua = useCallback(async () => {
-    const [produk, kategori, satuan, transaksi, mutasi, pelanggan, supplier, pembelian, pengguna, pengaturan] =
+    const [produk, kategori, satuan, transaksi, mutasi, pelanggan, supplier, pembelian, pengguna, pengaturan, integrasi] =
       await Promise.all([
         api.daftarProduk(),
         api.daftarKategori(),
@@ -77,6 +98,7 @@ export function AppStoreProvider({ children }) {
         api.daftarPembelian(),
         api.daftarPengguna(),
         api.ambilPengaturan(),
+        api.statusIntegrasi(),
       ])
     setStatus({
       produk: produk.produk || [],
@@ -89,6 +111,10 @@ export function AppStoreProvider({ children }) {
       pembelian: pembelian.pembelian || [],
       pengguna: pengguna.pengguna || [],
       pengaturan: pengaturan.pengaturan || { ...PENGATURAN_AWAL },
+      integrasi: integrasi.integrasi || {
+        accurate: statusIntegrasiKosong('accurate'),
+        jurnal: statusIntegrasiKosong('jurnal'),
+      },
     })
     setGalatKonek('')
   }, [])
@@ -98,8 +124,13 @@ export function AppStoreProvider({ children }) {
     setStatus((s) => ({ ...s, produk: produk.produk || [], mutasi: mutasi.mutasi || [] }))
   }, [])
 
-  const segarkanMaster = useCallback(async () => {
-    const [kategori, satuan, produk] = await Promise.all([
+  const muatIntegrasi = useCallback(async () => {
+    const { integrasi } = await api.statusIntegrasi()
+    setStatus((s) => ({ ...s, integrasi }))
+    return integrasi
+  }, [])
+
+  const segarkanMaster = useCallback(async () => {    const [kategori, satuan, produk] = await Promise.all([
       api.daftarKategori(),
       api.daftarSatuan(),
       api.daftarProduk(),
@@ -394,8 +425,26 @@ export function AppStoreProvider({ children }) {
         await api.kosongkanData()
         await muatSemua()
       },
+
+      /* ---------------------------- Integrasi ---------------------------- */
+      muatIntegrasi,
+
+      async simpanIntegrasi(provider, draf) {
+        const { integrasi } = await api.simpanIntegrasi(provider, draf)
+        await muatIntegrasi()
+        return integrasi
+      },
+
+      authorizeAccurate: () => api.authorizeAccurate(),
+      dbAccurate: () => api.dbAccurate(),
+      bukaDbAccurate: (dbId) => api.bukaDbAccurate(dbId).then((r) => muatIntegrasi().then(() => r)),
+      ujiIntegrasi: (provider) =>
+        api.ujiIntegrasi(provider).then((r) => muatIntegrasi().then(() => r)),
+      putusIntegrasi: (provider) =>
+        api.putusIntegrasi(provider).then((r) => muatIntegrasi().then(() => r)),
+      kirimAccurate: (saleId) => api.kirimAccurate(saleId),
     }
-  }, [muatSemua, segarkanMaster, segarkanStok])
+  }, [muatSemua, muatIntegrasi, segarkanMaster, segarkanStok])
 
   const statusLengkap = useMemo(
     () => ({ ...status, memuat, galatKonek }),

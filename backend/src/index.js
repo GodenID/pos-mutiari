@@ -18,6 +18,7 @@ import pengaturanRoute from './routes/pengaturan.js'
 import ringkasanRoute from './routes/ringkasan.js'
 import uploadRoute from './routes/upload.js'
 import adminRoute from './routes/admin.js'
+import integrasiRoute from './routes/integrasi.js'
 
 const app = new Hono()
 
@@ -55,6 +56,7 @@ app.route('/api/pengaturan', pengaturanRoute)
 app.route('/api/ringkasan', ringkasanRoute)
 app.route('/api/upload', uploadRoute)
 app.route('/api/admin', adminRoute)
+app.route('/api/integrasi', integrasiRoute)
 
 app.notFound((c) => c.json({ error: 'Tidak ditemukan' }, 404))
 app.onError((err, c) => {

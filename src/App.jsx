@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import Layout from './components/Layout.jsx'
+import CallbackIntegrasi from './pages/CallbackIntegrasi.jsx'
 import Dasbor from './pages/Dasbor.jsx'
 import Kasir from './pages/Kasir.jsx'
 import Masuk from './pages/Masuk.jsx'
@@ -82,6 +83,7 @@ export default function App() {
                 <Route path="/produk" element={<Produk />} />
                 <Route path="/stok" element={<Stok />} />
                 <Route path="/penjualan" element={<Penjualan />} />
+                <Route path="/integrasi/callback" element={<CallbackIntegrasi />} />
                 <Route path="/laporan" element={<Laporan />} />
                 <Route
                   path="/pengaturan"

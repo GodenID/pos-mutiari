@@ -120,6 +120,16 @@ export const api = {
     })
     if (!res.ok) throw new Error('Upload foto ke penyimpanan gagal')
   },
+
+  // Integrasi akuntansi
+  statusIntegrasi: () => get('/api/integrasi'),
+  simpanIntegrasi: (provider, d) => put(`/api/integrasi/${provider}`, d),
+  authorizeAccurate: () => get('/api/integrasi/accurate/authorize'),
+  dbAccurate: () => get('/api/integrasi/accurate/db'),
+  bukaDbAccurate: (dbId) => post('/api/integrasi/accurate/buka-db', { dbId }),
+  ujiIntegrasi: (provider) => post(`/api/integrasi/${provider}/uji`, {}),
+  putusIntegrasi: (provider) => del(`/api/integrasi/${provider}`),
+  kirimAccurate: (saleId) => post(`/api/integrasi/accurate/kirim/${saleId}`, {}),
 }
 
 export const API_BASE = BASE

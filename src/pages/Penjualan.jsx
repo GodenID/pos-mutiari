@@ -44,7 +44,7 @@ const SARING_STATUS = [
 ]
 
 export default function Penjualan() {
-  const { transaksi, pengaturan } = useStatus()
+  const { transaksi, pengaturan, integrasi } = useStatus()
   const { pengguna } = useSesi()
   const aksi = useAksi()
   const toast = useToast()
@@ -58,6 +58,22 @@ export default function Penjualan() {
   const [detail, setDetail] = useState(null)
   const [akanVoid, setAkanVoid] = useState(null)
   const [alasanVoid, setAlasanVoid] = useState('')
+  const [kirimSibuk, setKirimSibuk] = useState(false)
+
+  async function kirimFaktur() {
+    if (!detail || kirimSibuk) return
+    setKirimSibuk(true)
+    try {
+      const hasil = await aksi.kirimAccurate(detail.id)
+      toast.sukses(
+        `Terkirim ke Accurate${hasil?.faktur?.nomor ? ` (${hasil.faktur.nomor})` : ''}`,
+      )
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal mengirim ke Accurate')
+    } finally {
+      setKirimSibuk(false)
+    }
+  }
 
   const acuanStruk = useRef(null)
 
@@ -420,6 +436,18 @@ export default function Penjualan() {
               <Icon nama="cetak" ukuran={15} />
               Cetak Struk
             </button>
+            {detail?.status !== 'void' && integrasi?.accurate?.terhubung ? (
+              <button
+                type="button"
+                className="btn"
+                onClick={kirimFaktur}
+                disabled={kirimSibuk}
+                title="Buat faktur penjualan di Accurate"
+              >
+                <Icon nama="eksternal" ukuran={15} />
+                {kirimSibuk ? 'Mengirim…' : 'Kirim ke Accurate'}
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn btn-primer"

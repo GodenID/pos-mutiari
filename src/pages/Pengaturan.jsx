@@ -23,7 +23,7 @@ import { angka, rupiah, tanggalJam } from '../lib/format.js'
 import { nilaiPersediaan } from '../lib/analitik.js'
 
 export default function Pengaturan() {
-  const { pengaturan, produk, transaksi, mutasi, kategori, pelanggan, supplier, pembelian } =
+  const { pengaturan, produk, transaksi, mutasi, kategori, pelanggan, supplier, pembelian, integrasi } =
     useStatus()
   const aksi = useAksi()
   const toast = useToast()
@@ -296,7 +296,7 @@ export default function Pengaturan() {
             sub="Kirim faktur penjualan ke pembukuan tanpa input ulang"
           >
             <KartuIntegrasi
-              integrasi={form.integrasi || PENGATURAN_AWAL.integrasi}
+              status={integrasi}
               onKelola={(id) => setIntegrasiAktif(id)}
             />
           </Kartu>
@@ -444,30 +444,7 @@ export default function Pengaturan() {
       <ModalIntegrasi
         key={integrasiAktif || 'tutup'}
         penyediaId={integrasiAktif}
-        integrasi={form.integrasi || PENGATURAN_AWAL.integrasi}
         tutup={() => setIntegrasiAktif(null)}
-        onSimpan={(nilai) => {
-          const baru = {
-            ...(form.integrasi || PENGATURAN_AWAL.integrasi),
-            [integrasiAktif]: nilai,
-          }
-          setForm((f) => ({ ...f, integrasi: baru }))
-          aksi.simpanPengaturan({ ...form, integrasi: baru }).catch((e) => {
-            toast.galat(e?.message || 'Gagal menyimpan konfigurasi')
-          })
-          toast.sukses('Konfigurasi integrasi disimpan')
-          setIntegrasiAktif(null)
-        }}
-        onPutuskan={() => {
-          const baru = {
-            ...(form.integrasi || PENGATURAN_AWAL.integrasi),
-            [integrasiAktif]: { ...PENGATURAN_AWAL.integrasi[integrasiAktif] },
-          }
-          setForm((f) => ({ ...f, integrasi: baru }))
-          aksi.simpanPengaturan({ ...form, integrasi: baru }).catch(() => null)
-          toast.info('Koneksi integrasi diputus')
-          setIntegrasiAktif(null)
-        }}
       />
 
       <Konfirmasi
@@ -522,8 +499,8 @@ const PENYEDIA = {
     docsUrl: 'https://accurate.id/api-integration',
     langkah: [
       'Buka Area Developer Accurate, daftar sebagai developer, lalu Tambah Aplikasi Baru (platform Website).',
-      'Daftarkan URL OAuth Callback, lalu catat Client ID dan Client Secret.',
-      'Isi kredensial di bawah lalu Simpan. Otorisasi OAuth aktif setelah layanan backend tersedia.',
+      'Daftarkan URL OAuth Callback di bawah ke aplikasi Accurate, lalu catat Client ID dan Client Secret.',
+      'Simpan konfigurasi, klik Otorisasi OAuth, login Accurate, lalu pilih database dan Buka.',
     ],
     bidang: [
       { kunci: 'clientId', label: 'Client ID', placeholder: 'mis. 42f12a10-…' },
@@ -541,7 +518,7 @@ const PENYEDIA = {
     langkah: [
       'Khusus peran Owner: di Jurnal buka API Credentials → Buka Mekari Developers → Create Application.',
       'Pilih Company, centang scope “Jurnal All”, lalu catat Client ID dan Client Secret.',
-      'Isi kredensial di bawah lalu Simpan. Pengiriman otomatis aktif setelah layanan backend tersedia.',
+      'Simpan konfigurasi lalu Uji koneksi. Centang sandbox untuk mencoba ke server uji.',
     ],
     bidang: [
       { kunci: 'clientId', label: 'Client ID', placeholder: 'Client ID Mekari Developers' },
@@ -553,42 +530,50 @@ const PENYEDIA = {
 
 const PENYEDIA_ID = Object.keys(PENYEDIA)
 
-function sudahDikonfigurasi(nilai) {
-  return !!(nilai && String(nilai.clientId || '').trim())
-}
-
-function KartuIntegrasi({ integrasi, onKelola }) {
+function KartuIntegrasi({ status, onKelola }) {
   return (
     <div className="col g14">
       <div className="info-box info-box-netral">
         <Icon nama="info" ukuran={16} />
         <span>
           Setiap transaksi selesai dapat diteruskan sebagai faktur ke pembukuan.
-          Otorisasi memakai akun resmi masing-masing platform — POS tidak pernah
-          meminta kata sandi Accurate / Jurnal Anda.
+          Kredensial tersimpan terenkripsi di server — tidak bisa dibaca dari
+          peramban. Otorisasi memakai akun resmi masing-masing platform.
         </span>
       </div>
       <div className="integrasi-daftar">
         {PENYEDIA_ID.map((id) => {
           const p = PENYEDIA[id]
-          const dikonfigurasi = sudahDikonfigurasi(integrasi?.[id])
+          const st = status?.[id]
+          const badge = !st || (!st.dikonfigurasi && !st.terhubung)
+            ? ['netral', 'Belum terhubung']
+            : st.terhubung
+              ? ['hijau', `Terhubung${st.dbAlias || st.perusahaan ? ` • ${st.dbAlias || st.perusahaan}` : ''}`]
+              : st.status === 'galat'
+                ? ['merah', 'Koneksi gagal']
+                : ['kuning', 'Dikonfigurasi']
           return (
             <div key={id} className="integrasi-provider">
               <div className="isi">
                 <div className="tebal sm">{p.nama}</div>
                 <div className="xs muted">{p.deskripsi}</div>
+                {st?.lastError && !st?.terhubung ? (
+                  <div className="xs" style={{ color: 'var(--danger)', marginTop: 4 }}>
+                    {st.lastError}
+                  </div>
+                ) : null}
               </div>
-              <Lencana warna={dikonfigurasi ? 'kuning' : 'netral'} titik>
-                {dikonfigurasi ? 'Dikonfigurasi' : 'Belum terhubung'}
+              <Lencana warna={badge[0]} titik>
+                {badge[1]}
               </Lencana>
               <button
                 type="button"
                 className="btn integrasi-btn"
                 onClick={() => onKelola(id)}
-                aria-label={`${dikonfigurasi ? 'Kelola' : 'Hubungkan ke'} ${p.nama}`}
+                aria-label={`Kelola ${p.nama}`}
               >
                 <img src={p.logo} alt={`Logo ${p.nama}`} className="integrasi-logo" />
-                {dikonfigurasi ? 'Kelola' : 'Hubungkan'}
+                {st?.dikonfigurasi || st?.terhubung ? 'Kelola' : 'Hubungkan'}
               </button>
             </div>
           )
@@ -602,16 +587,112 @@ function KartuIntegrasi({ integrasi, onKelola }) {
   )
 }
 
-function ModalIntegrasi({ penyediaId, integrasi, tutup, onSimpan, onPutuskan }) {
+function ModalIntegrasi({ penyediaId, tutup }) {
+  const aksi = useAksi()
+  const toast = useToast()
+  const { integrasi } = useStatus()
   const p = penyediaId ? PENYEDIA[penyediaId] : null
-  const [draf, setDraf] = useState({ ...(penyediaId ? integrasi?.[penyediaId] : {}) })
-  const dikonfigurasi = sudahDikonfigurasi(integrasi?.[penyediaId])
+  const st = penyediaId ? integrasi?.[penyediaId] : null
+
+  const [draf, setDraf] = useState({
+    clientId: '',
+    clientSecret: '',
+    redirectUri: st?.redirectUri || '',
+    dbId: st?.dbId || '',
+    perusahaan: st?.perusahaan || '',
+    sandbox: !!st?.sandbox,
+  })
+  const [sibuk, setSibuk] = useState('')
+  const [daftarDb, setDaftarDb] = useState(null)
 
   const ubah = (kunci) => (e) => setDraf((d) => ({ ...d, [kunci]: e.target.value }))
 
-  const simpan = () => {
+  const callbackUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/integrasi/callback` : ''
+
+  const simpan = async () => {
     if (!String(draf.clientId || '').trim()) return
-    onSimpan(draf)
+    setSibuk('simpan')
+    try {
+      await aksi.simpanIntegrasi(penyediaId, {
+        clientId: draf.clientId.trim(),
+        ...(draf.clientSecret ? { clientSecret: draf.clientSecret } : {}),
+        redirectUri: (draf.redirectUri || '').trim(),
+        dbId: (draf.dbId || '').trim(),
+        perusahaan: (draf.perusahaan || '').trim(),
+        sandbox: !!draf.sandbox,
+      })
+      setDraf((d) => ({ ...d, clientSecret: '' }))
+      toast.sukses('Konfigurasi tersimpan terenkripsi di server')
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menyimpan konfigurasi')
+    } finally {
+      setSibuk('')
+    }
+  }
+
+  const otorisasi = async () => {
+    setSibuk('oauth')
+    try {
+      const { url } = await aksi.authorizeAccurate()
+      window.location.href = url
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal membuat URL otorisasi')
+      setSibuk('')
+    }
+  }
+
+  const muatDb = async () => {
+    setSibuk('db')
+    try {
+      const { database } = await aksi.dbAccurate()
+      setDaftarDb(database || [])
+      if (!(database || []).length) toast.info('Tidak ada database yang bisa diakses')
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal membaca database')
+    } finally {
+      setSibuk('')
+    }
+  }
+
+  const bukaDb = async () => {
+    if (!(draf.dbId || '').trim()) {
+      toast.galat('Pilih database dulu')
+      return
+    }
+    setSibuk('buka')
+    try {
+      await aksi.bukaDbAccurate(draf.dbId.trim())
+      toast.sukses('Database Accurate terbuka & terhubung')
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal membuka database')
+    } finally {
+      setSibuk('')
+    }
+  }
+
+  const uji = async () => {
+    setSibuk('uji')
+    try {
+      await aksi.ujiIntegrasi(penyediaId)
+      toast.sukses(`Koneksi ${p.nama} OK`)
+    } catch (e) {
+      toast.galat(e?.message || 'Uji koneksi gagal')
+    } finally {
+      setSibuk('')
+    }
+  }
+
+  const putuskan = async () => {
+    setSibuk('putus')
+    try {
+      await aksi.putusIntegrasi(penyediaId)
+      toast.info(`Koneksi ${p.nama} diputus (kredensial tetap tersimpan)`)
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal memutuskan koneksi')
+    } finally {
+      setSibuk('')
+    }
   }
 
   return (
@@ -623,8 +704,13 @@ function ModalIntegrasi({ penyediaId, integrasi, tutup, onSimpan, onPutuskan }) 
       ukuran="sm"
       kaki={
         <>
-          {dikonfigurasi ? (
-            <button type="button" className="btn btn-bahaya" onClick={onPutuskan}>
+          {st?.dikonfigurasi || st?.terhubung ? (
+            <button
+              type="button"
+              className="btn btn-bahaya"
+              onClick={putuskan}
+              disabled={!!sibuk}
+            >
               Putuskan
             </button>
           ) : null}
@@ -633,16 +719,16 @@ function ModalIntegrasi({ penyediaId, integrasi, tutup, onSimpan, onPutuskan }) 
             className="btn kanan"
             onClick={tutup}
           >
-            Batal
+            Tutup
           </button>
           <button
             type="button"
             className="btn btn-primer"
             onClick={simpan}
-            disabled={!String(draf?.clientId || '').trim()}
+            disabled={!String(draf?.clientId || '').trim() || !!sibuk}
           >
             <Icon nama="simpan" ukuran={15} />
-            Simpan konfigurasi
+            {sibuk === 'simpan' ? 'Menyimpan…' : 'Simpan konfigurasi'}
           </button>
         </>
       }
@@ -689,14 +775,113 @@ function ModalIntegrasi({ penyediaId, integrasi, tutup, onSimpan, onPutuskan }) 
               </Bidang>
             ))}
           </div>
-          <div className="info-box info-box-kuning">
-            <Icon nama="peringatan" ukuran={16} />
-            <span>
-              Client Secret tersimpan di peramban ini saja. Untuk operasional penuh
-              (OAuth & kirim faktur otomatis), secret wajib pindah ke layanan backend
-              agar tidak terbaca dari devtools.
-            </span>
+          {penyediaId === 'jurnal' ? (
+            <label className="row g6 sm" style={{ alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={!!draf.sandbox}
+                onChange={(e) => setDraf((d) => ({ ...d, sandbox: e.target.checked }))}
+              />
+              Mode sandbox (server uji Mekari)
+            </label>
+          ) : null}
+          {st?.clientIdTampil ? (
+            <p className="xs muted">
+              Tersimpan di server: <span className="num">{st.clientIdTampil}</span>
+              {' '}— kosongkan Client Secret bila tidak diganti.
+            </p>
+          ) : null}
+          {st?.terhubung ? (
+            <div className="info-box">
+              <Icon nama="centang-bulat" ukuran={16} />
+              <span>
+                Terhubung{st.dbAlias ? ` ke ${st.dbAlias}` : ''}{st.perusahaan ? ` • ${st.perusahaan}` : ''}
+                {st.lastCheck ? ` • dicek ${tanggalJam(st.lastCheck)}` : ''}.
+              </span>
+            </div>
+          ) : st?.lastError ? (
+            <div className="info-box info-box-merah">
+              <Icon nama="peringatan" ukuran={16} />
+              <span>{st.lastError}</span>
+            </div>
+          ) : st?.dikonfigurasi ? (
+            <div className="info-box info-box-kuning">
+              <Icon nama="peringatan" ukuran={16} />
+              <span>
+                Kredensial tersimpan terenkripsi.
+                {penyediaId === 'accurate'
+                  ? ' Lanjutkan: Otorisasi OAuth → pilih database → Buka.'
+                  : ' Klik Uji koneksi untuk memastikan.'}
+              </span>
+            </div>
+          ) : null}
+          {penyediaId === 'accurate' ? (
+            <div className="info-box info-box-netral">
+              <Icon nama="info" ukuran={16} />
+              <span>
+                Daftarkan URL OAuth Callback ini di aplikasi Accurate:{' '}
+                <span className="num">{callbackUrl || '(isi URL OAuth Callback manual di atas)'}</span>
+              </span>
+            </div>
+          ) : null}
+          <div className="row g6 wrap">
+            {penyediaId === 'accurate' && st?.dikonfigurasi ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={otorisasi}
+                  disabled={sibuk === 'oauth'}
+                >
+                  <Icon nama="eksternal" ukuran={13} />
+                  {sibuk === 'oauth' ? 'Membuka…' : st?.terhubung ? 'Otorisasi ulang' : 'Otorisasi OAuth'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={muatDb}
+                  disabled={sibuk === 'db'}
+                >
+                  {sibuk === 'db' ? 'Memuat…' : 'Muat database'}
+                </button>
+              </>
+            ) : null}
+            {st?.dikonfigurasi ? (
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={uji}
+                disabled={!!sibuk}
+              >
+                {sibuk === 'uji' ? 'Menguji…' : 'Uji koneksi'}
+              </button>
+            ) : null}
           </div>
+          {penyediaId === 'accurate' && st?.dikonfigurasi && daftarDb ? (
+            <div className="row g6">
+              <select
+                className="sel isi"
+                value={draf.dbId}
+                onChange={(e) => setDraf((d) => ({ ...d, dbId: e.target.value }))}
+                aria-label="Pilih database Accurate"
+              >
+                <option value="">— pilih database —</option>
+                {daftarDb.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.alias} ({d.id})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn btn-sm btn-primer"
+                onClick={bukaDb}
+                disabled={sibuk === 'buka' || !draf.dbId}
+              >
+                {sibuk === 'buka' ? 'Membuka…' : 'Buka'}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </Modal>

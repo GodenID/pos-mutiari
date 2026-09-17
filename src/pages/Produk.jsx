@@ -2,7 +2,7 @@
    Produk — daftar barang, harga, margin, dan kategori
    ========================================================================= */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 
 import Icon from '../components/Icon.jsx'
 import Modal, { Konfirmasi } from '../components/Modal.jsx'
@@ -79,8 +79,9 @@ export default function Produk() {
   const [galat, setGalat] = useState({})
   const [akanHapus, setAkanHapus] = useState(null)
   const [unggahFoto, setUnggahFoto] = useState(false)
+  const [cropFile, setCropFile] = useState(null) // { file, url } — dipilih, belum diunggah
 
-  async function pilihFoto(e) {
+  function pilihFoto(e) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
@@ -88,10 +89,20 @@ export default function Produk() {
       toast.galat('Format foto harus JPG, PNG, atau WebP')
       return
     }
+    setCropFile({ file, url: URL.createObjectURL(file) })
+  }
+
+  function tutupCrop() {
+    if (cropFile?.url) URL.revokeObjectURL(cropFile.url)
+    setCropFile(null)
+  }
+
+  async function unggahHasilCrop(file) {
     if (file.size > 2 * 1024 * 1024) {
-      toast.galat('Ukuran foto maksimal 2 MB')
+      toast.galat('Hasil potongan melebihi 2 MB — coba lagi')
       return
     }
+    tutupCrop()
     setUnggahFoto(true)
     try {
       const pre = await api.presignUnggah(file.name, file.type, file.size)
@@ -764,6 +775,14 @@ export default function Produk() {
       {/* ========================= Modal satuan ========================= */}
       <ModalSatuan buka={modal === 'satuan'} tutup={() => setModal(null)} />
 
+      {/* ========================= Modal crop foto ======================== */}
+      <ModalCropFoto
+        buka={!!cropFile}
+        berkas={cropFile}
+        tutup={tutupCrop}
+        onHasil={unggahHasilCrop}
+      />
+
       {imporBuka ? <ModalImpor tutup={() => setImporBuka(false)} /> : null}
 
       {/* ========================= Hapus produk ======================== */}
@@ -1358,6 +1377,175 @@ function PemilihFoto({ nilai, sibuk, onPilih, onHapus }) {
           />
         </label>
       )}
+    </div>
+  )
+}
+
+/* --------------------------- Crop foto produk ---------------------------- */
+/* Geser gambar untuk mengatur posisi, slider untuk zoom. Hasil 1:1 800px. */
+
+function ModalCropFoto({ buka, berkas, tutup, onHasil }) {
+  return (
+    <Modal
+      buka={buka}
+      tutup={tutup}
+      judul="Atur Foto Produk"
+      keterangan="Geser foto untuk mengatur posisi, gunakan slider untuk memperbesar"
+      ukuran="sm"
+      kaki={
+        <button type="button" className="btn kanan" onClick={tutup}>
+          Batal
+        </button>
+      }
+    >
+      {buka && berkas?.url ? <CropIsi key={berkas.url} url={berkas.url} onHasil={onHasil} /> : null}
+    </Modal>
+  )
+}
+
+/* Isi crop — di-remount tiap berkas baru (key) sehingga state selalu segar. */
+
+function CropIsi({ url, onHasil }) {
+  const kotakRef = useRef(null)
+  const imgRef = useRef(null)
+  const seret = useRef(null)
+  const lebarRef = useRef(260)
+
+  const [alam, setAlam] = useState({ w: 0, h: 0 })
+  const [skalaDasar, setSkalaDasar] = useState(1)
+  const [skala, setSkala] = useState(1)
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const [proses, setProses] = useState(false)
+
+  const lebar = () => lebarRef.current || 260
+  const jepit = (v, min, maks) => Math.min(maks, Math.max(min, v))
+
+  function ukur() {
+    if (kotakRef.current?.clientWidth) lebarRef.current = kotakRef.current.clientWidth
+  }
+
+  function jepitPos(x, y, s) {
+    const k = lebar()
+    const lw = alam.w * s
+    const lh = alam.h * s
+    return {
+      x: jepit(x, -Math.max(0, (lw - k) / 2), Math.max(0, (lw - k) / 2)),
+      y: jepit(y, -Math.max(0, (lh - k) / 2), Math.max(0, (lh - k) / 2)),
+    }
+  }
+
+  function saatMuat() {
+    const img = imgRef.current
+    if (!img) return
+    ukur()
+    const w = img.naturalWidth
+    const h = img.naturalHeight
+    if (!w || !h) return
+    setAlam({ w, h })
+    const dasar = Math.max(lebar() / w, lebar() / h)
+    setSkalaDasar(dasar)
+    setSkala(dasar)
+    setPos({ x: 0, y: 0 })
+  }
+
+  function mulaiSeret(e) {
+    if (!alam.w) return
+    e.preventDefault()
+    seret.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y }
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* abaikan */
+    }
+  }
+
+  function gerakSeret(e) {
+    const s = seret.current
+    if (!s) return
+    const r = kotakRef.current?.getBoundingClientRect()
+    const f = r && r.width ? lebar() / r.width : 1
+    setPos(jepitPos(s.px + (e.clientX - s.x) * f, s.py + (e.clientY - s.y) * f, skala))
+  }
+
+  function lepasSeret() {
+    seret.current = null
+  }
+
+  function ubahZoom(nilai) {
+    const s = jepit(Number(nilai) || skalaDasar, skalaDasar, skalaDasar * 3)
+    setSkala(s)
+    setPos((p) => jepitPos(p.x, p.y, s))
+  }
+
+  async function hasilkan() {
+    const img = imgRef.current
+    if (!img || !alam.w || proses) return
+    setProses(true)
+    try {
+      const SISI = 800
+      const k = lebar()
+      const lebarTampil = alam.w * skala
+      const tinggiTampil = alam.h * skala
+      const sx = ((lebarTampil - k) / 2 - pos.x) / skala
+      const sy = ((tinggiTampil - k) / 2 - pos.y) / skala
+      const ss = k / skala
+      const kanvas = document.createElement('canvas')
+      kanvas.width = SISI
+      kanvas.height = SISI
+      kanvas.getContext('2d').drawImage(img, sx, sy, ss, ss, 0, 0, SISI, SISI)
+      const blob = await new Promise((res) => kanvas.toBlob(res, 'image/jpeg', 0.85))
+      if (!blob) throw new Error('Gagal memotong gambar')
+      await onHasil(new File([blob], `crop-${Date.now()}.jpg`, { type: 'image/jpeg' }))
+    } finally {
+      setProses(false)
+    }
+  }
+
+  return (
+    <div className="col g12">
+      <div ref={kotakRef} className="crop-kotak">
+        <img
+          ref={imgRef}
+          src={url}
+          alt="Pratinjau potongan foto"
+          className="crop-gambar"
+          style={{
+            width: Math.round(alam.w * skala) || 'auto',
+            height: Math.round(alam.h * skala) || 'auto',
+            transform: `translate(${pos.x}px, ${pos.y}px)`,
+          }}
+          onLoad={saatMuat}
+          onPointerDown={mulaiSeret}
+          onPointerMove={gerakSeret}
+          onPointerUp={lepasSeret}
+          onPointerCancel={lepasSeret}
+          draggable={false}
+        />
+        <div className="crop-bingkai" />
+      </div>
+      <div className="row g6" style={{ alignItems: 'center' }}>
+        <Icon nama="cari" ukuran={14} />
+        <input
+          type="range"
+          className="crop-zoom isi"
+          min={skalaDasar}
+          max={skalaDasar * 3}
+          step={0.01}
+          value={skala}
+          onChange={(e) => ubahZoom(e.target.value)}
+          aria-label="Zoom foto"
+        />
+      </div>
+      <p className="xs muted">Hasil akhir persegi 800 × 800 piksel.</p>
+      <button
+        type="button"
+        className="btn btn-primer btn-blok"
+        onClick={hasilkan}
+        disabled={proses || !alam.w}
+      >
+        <Icon nama="simpan" ukuran={15} />
+        {proses ? 'Memproses…' : 'Potong & Upload'}
+      </button>
     </div>
   )
 }

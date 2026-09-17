@@ -172,3 +172,17 @@ model Setting {
   id   Int    @id @default(1)
   data Json   @default("{}")
 }
+
+model Integration {
+  id         String    @id @default(cuid())
+  provider   String    @unique
+  clientId   String    @default("")
+  secretEnc  String    @default("")
+  accessEnc  String    @default("")
+  refreshEnc String    @default("")
+  status     String    @default("belum")
+  extra      Json      @default("{}")
+  lastCheck  DateTime?
+  lastError  String    @default("")
+  updatedAt  DateTime  @updatedAt
+}
