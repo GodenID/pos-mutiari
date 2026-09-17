@@ -11,11 +11,6 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon.jsx'
 import { useAksi, useSesi, useStatus, useToast } from '../store/konteks.js'
 
-const DEMO = [
-  { peran: 'Admin', username: 'admin', sandi: 'admin123' },
-  { peran: 'Kasir', username: 'kasir', sandi: 'kasir123' },
-]
-
 function tanggalHariIni() {
   return new Date().toLocaleDateString('id-ID', {
     weekday: 'short',
@@ -51,14 +46,6 @@ export default function Masuk() {
     } catch {
       /* abaikan */
     }
-  }
-
-  function isiDemo(akun) {
-    if (sibuk) return
-    setGalat('')
-    setUsername(akun.username)
-    setSandi(akun.sandi)
-    document.getElementById('masuk-sandi')?.focus()
   }
 
   async function kirim(e) {
@@ -169,35 +156,8 @@ export default function Masuk() {
             </button>
           </div>
 
-          <div className="masuk-demo">
-            <div className="masuk-demo-kepala">
-              <span className="label">Akun bawaan</span>
-              <span className="xs tersier">klik Isi untuk memakai</span>
-            </div>
-            {DEMO.map((a) => (
-              <div key={a.peran} className="masuk-demo-baris">
-                <span className="masuk-demo-peran">{a.peran}</span>
-                <span className="masuk-demo-kredensial num">
-                  {a.username} / {a.sandi}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  onClick={() => isiDemo(a)}
-                  disabled={sibuk}
-                >
-                  Isi
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <p className="masuk-catatan xs muted">
-            Sesi terkunci per tab — menutup tab berarti keluar. Ganti sandi bawaan
-            di Pengaturan → Pengguna setelah masuk.
-          </p>
         </form>
-        <p className="masuk-kaki xs tersier">Tersambung ke server toko — data tersimpan terpusat.</p>
+        <p className="masuk-kaki xs tersier">Copyright 2026. Prasasti Group.</p>
       </div>
     </div>
   )

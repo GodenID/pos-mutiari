@@ -50,14 +50,6 @@ const ALASAN_MASUK = [
   'Transfer dari cabang lain',
 ]
 
-const ALASAN_KELUAR = [
-  'Barang rusak',
-  'Kedaluwarsa',
-  'Hilang / selisih',
-  'Dipakai sendiri',
-  'Retur ke supplier',
-]
-
 export default function Stok() {
   const { produk, mutasi } = useStatus()
   const [tab, setTab] = useState('persediaan')
@@ -446,7 +438,7 @@ function ModalMutasi({ data, tutup, onSimpan }) {
     setSiap(data.produk.id + data.tipe)
     setTipe(data.tipe)
     setQty('')
-    setAlasan(data.tipe === 'masuk' ? ALASAN_MASUK[0] : ALASAN_KELUAR[0])
+    setAlasan(data.tipe === 'masuk' ? ALASAN_MASUK[0] : '')
     setCatatan('')
   }
   if (!data && siap !== null) setSiap(null)
@@ -455,8 +447,8 @@ function ModalMutasi({ data, tutup, onSimpan }) {
   const p = data.produk
   const jumlah = Number(qty) || 0
   const stokBaru = tipe === 'masuk' ? p.stok + jumlah : Math.max(0, p.stok - jumlah)
-  const daftarAlasan = tipe === 'masuk' ? ALASAN_MASUK : ALASAN_KELUAR
   const berlebihan = tipe === 'keluar' && jumlah > p.stok
+  const alasanWajib = tipe === 'keluar' && !alasan.trim()
 
   return (
     <Modal
@@ -473,13 +465,16 @@ function ModalMutasi({ data, tutup, onSimpan }) {
           <button
             type="button"
             className="btn btn-primer kanan"
-            disabled={jumlah <= 0}
+            disabled={jumlah <= 0 || alasanWajib}
             onClick={() =>
               onSimpan({
                 produk: p,
                 tipe,
                 qty: jumlah,
-                keterangan: [alasan, catatan].filter(Boolean).join(' — '),
+                keterangan:
+                  tipe === 'keluar'
+                    ? alasan.trim()
+                    : [alasan, catatan].filter(Boolean).join(' — '),
               })
             }
           >
@@ -515,7 +510,7 @@ function ModalMutasi({ data, tutup, onSimpan }) {
             nilai={tipe}
             onUbah={(v) => {
               setTipe(v)
-              setAlasan(v === 'masuk' ? ALASAN_MASUK[0] : ALASAN_KELUAR[0])
+              setAlasan(v === 'masuk' ? ALASAN_MASUK[0] : '')
             }}
             opsi={[
               { id: 'masuk', nama: 'Barang masuk' },
@@ -538,28 +533,45 @@ function ModalMutasi({ data, tutup, onSimpan }) {
           />
         </Bidang>
 
-        <Bidang label="Alasan">
-          <select
-            className="sel"
-            value={alasan}
-            onChange={(e) => setAlasan(e.target.value)}
-          >
-            {daftarAlasan.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
+        <Bidang
+          label="Alasan"
+          wajib={tipe === 'keluar'}
+          galat={alasanWajib ? 'Tulis alasannya — mis. dipakai buat client' : undefined}
+        >
+          {tipe === 'keluar' ? (
+            <input
+              className="inp"
+              data-fokus-awal
+              value={alasan}
+              onChange={(e) => setAlasan(e.target.value)}
+              placeholder="mis. dipakai buat client"
+              aria-invalid={alasanWajib}
+            />
+          ) : (
+            <select
+              className="sel"
+              value={alasan}
+              onChange={(e) => setAlasan(e.target.value)}
+            >
+              {ALASAN_MASUK.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+          )}
         </Bidang>
 
-        <Bidang label="Catatan tambahan" petunjuk="Opsional, mis. nomor nota supplier">
-          <input
-            className="inp"
-            value={catatan}
-            onChange={(e) => setCatatan(e.target.value)}
-            placeholder="mis. PO-20260916 / Toko Grosir Amanah"
-          />
-        </Bidang>
+        {tipe === 'masuk' ? (
+          <Bidang label="Catatan tambahan" petunjuk="Opsional, mis. nomor nota supplier">
+            <input
+              className="inp"
+              value={catatan}
+              onChange={(e) => setCatatan(e.target.value)}
+              placeholder="mis. PO-20260916 / Toko Grosir Amanah"
+            />
+          </Bidang>
+        ) : null}
       </div>
     </Modal>
   )
