@@ -1,0 +1,479 @@
+/* =========================================================================
+   Shell aplikasi — sidebar rail (desktop) + drawer & bottom nav (mobile)
+   ========================================================================= */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  height: 100%;
+  background: var(--surface-2);
+  transition: grid-template-columns 0.2s var(--ease);
+}
+
+/* --------------------- Sidebar ciut (desktop) --------------------------- */
+
+@media (min-width: 901px) {
+  .shell.ciut {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+
+  .shell.ciut .brand {
+    padding: 0;
+    justify-content: center;
+  }
+
+  .shell.ciut .brand .isi {
+    display: none;
+  }
+
+  .shell.ciut .nav {
+    padding: 12px 8px 16px;
+  }
+
+  .shell.ciut .nav-grup {
+    font-size: 0;
+    padding: 10px 4px 4px;
+    border-bottom: 1px solid var(--line-soft);
+    margin: 0 6px 6px;
+  }
+
+  .shell.ciut .nav-item {
+    justify-content: center;
+    padding: 9px 0;
+  }
+
+  .shell.ciut .nav-item .isi,
+  .shell.ciut .nav-lonceng {
+    display: none;
+  }
+
+  .shell.ciut .nav-item.aktif::before {
+    left: -8px;
+  }
+
+  .shell.ciut .sidebar-kaki {
+    padding: 8px;
+  }
+
+  .shell.ciut .kasir-kartu {
+    justify-content: center;
+    padding: 6px 4px;
+  }
+
+  .shell.ciut .kasir-kartu .isi {
+    display: none;
+  }
+}
+
+/* ---------------------------- Sidebar ----------------------------------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--topbar-h);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--g-600);
+  color: #fff;
+  flex: none;
+}
+
+.brand-nama {
+  font-size: var(--t-md);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.brand-sub {
+  font-size: var(--t-micro);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-400);
+  line-height: 1.1;
+}
+
+.nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 10px 16px;
+}
+
+.nav-grup {
+  padding: 14px 8px 6px;
+}
+.nav-grup:first-child {
+  padding-top: 2px;
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--ink-700);
+  text-decoration: none;
+  transition: background 0.12s var(--ease), color 0.12s var(--ease);
+}
+
+.nav-item + .nav-item {
+  margin-top: 1px;
+}
+
+.nav-item:hover {
+  background: var(--surface-2);
+  color: var(--ink-900);
+  text-decoration: none;
+}
+
+.nav-item svg {
+  color: var(--ink-400);
+  transition: color 0.12s var(--ease);
+}
+
+.nav-item.aktif {
+  background: var(--g-50);
+  color: var(--g-800);
+  font-weight: 600;
+}
+
+.nav-item.aktif svg {
+  color: var(--g-600);
+}
+
+/* Penanda aktif: batang hijau tipis di tepi kiri, bukan pill penuh */
+.nav-item.aktif::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--g-600);
+}
+
+.nav-lonceng {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 5px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  font-family: var(--font-num);
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-line);
+}
+
+.nav-item.aktif .nav-lonceng {
+  background: #fff;
+}
+
+.sidebar-kaki {
+  flex: none;
+  border-top: 1px solid var(--line);
+  padding: 12px;
+}
+
+.kasir-kartu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--g-100);
+  color: var(--g-800);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ---------------------------- Area utama -------------------------------- */
+
+.utama {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--topbar-h);
+  flex: none;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.topbar-judul {
+  font-size: var(--t-md);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.topbar-sub {
+  font-size: var(--t-xs);
+  color: var(--ink-500);
+  line-height: 1.2;
+}
+
+.topbar-aksi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Chip jam & tanggal — konteks operasional kasir */
+.jam-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+.jam-chip b {
+  font-family: var(--font-num);
+  font-size: var(--t-base);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.jam-chip span {
+  font-size: var(--t-xs);
+  color: var(--ink-500);
+}
+
+.konten {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.konten-rapat {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.halaman {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.halaman-lebar {
+  max-width: none;
+}
+
+/* Kepala halaman: judul kiri, aksi kanan, garis pemisah tipis */
+.halaman-kepala {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.halaman-kepala h1 {
+  font-size: var(--t-2xl);
+  letter-spacing: -0.022em;
+}
+
+.halaman-kepala p {
+  font-size: var(--t-sm);
+  color: var(--ink-500);
+  margin-top: 3px;
+}
+
+/* ---------------------------- Grid isi ---------------------------------- */
+
+.grid-stat {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Dashboard: kolom utama lebar + kolom samping ringkas (asimetris) */
+.grid-dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .grid-stat {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid-dash,
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------------------------- Responsif shell --------------------------- */
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Sidebar tidak ditampilkan di mobile — navigasi lewat bilah bawah */
+  .sidebar {
+    display: none;
+  }
+
+  .topbar {
+    padding: 0 12px;
+    gap: 10px;
+  }
+
+  .konten {
+    padding: 14px 12px calc(var(--bottomnav-h) + 18px);
+  }
+
+  .halaman {
+    gap: 14px;
+  }
+
+  .halaman-kepala h1 {
+    font-size: var(--t-xl);
+  }
+
+  .grid-stat {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .grid-stat {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Bottom nav: hanya di mobile, 5 tujuan utama */
+.bottomnav {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .bottomnav {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    height: calc(var(--bottomnav-h) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+  }
+
+  .bottomnav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--ink-500);
+    text-decoration: none;
+    position: relative;
+  }
+
+  .bottomnav-item svg {
+    color: var(--ink-400);
+  }
+
+  .bottomnav-item.aktif {
+    color: var(--g-800);
+  }
+
+  .bottomnav-item.aktif svg {
+    color: var(--g-600);
+  }
+
+  .bottomnav-item.aktif::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 22px;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: var(--g-600);
+  }
+}
+
+@keyframes pudar-masuk {
+  from {
+    opacity: 0;
+  }
+}

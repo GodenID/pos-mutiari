@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id    String @id @default(cuid())
+  nama  String @unique
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  sku       String   @unique
+  nama      String
+  kategori  String   @default("Lain-lain")
+  satuan    String   @default("pcs")
+  hargaBeli Int      @default(0)
+  hargaJual Int      @default(0)
+  stok      Int      @default(0)
+  stokMin   Int      @default(0)
+  aktif     Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  @@index([nama])
+  @@index([kategori])
+}
+
+model Customer {
+  id         String   @id @default(cuid())
+  nama       String
+  telepon    String   @default("")
+  alamat     String   @default("")
+  catatan    String   @default("")
+  dibuatPada DateTime @default(now())
+
+  @@index([nama])
+}
+
+model Supplier {
+  id      String @id @default(cuid())
+  nama    String
+  telepon String @default("")
+  alamat  String @default("")
+  catatan String @default("")
+
+  @@index([nama])
+}
+
+model Purchase {
+  id           String         @id @default(cuid())
+  nomor        String         @unique
+  tanggal      DateTime       @default(now())
+  supplierId   String         @default("")
+  supplierNama String         @default("Supplier umum")
+  total        Int            @default(0)
+  keterangan   String         @default("")
+  petugas      String         @default("Kasir")
+  item         PurchaseItem[]
+
+  @@index([tanggal])
+}
+
+model PurchaseItem {
+  id         String   @id @default(cuid())
+  purchaseId String
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  produkId   String
+  sku        String   @default("")
+  nama       String
+  satuan     String   @default("pcs")
+  qty        Int
+  hargaBeli  Int
+  subtotal   Int
+
+  @@index([purchaseId])
+  @@index([produkId])
+}
+
+model Sale {
+  id          String     @id @default(cuid())
+  nomor       String     @unique
+  tanggal     DateTime   @default(now())
+  kasir       String     @default("Kasir")
+  pelanggan   String     @default("")
+  pelangganId String     @default("")
+  subtotal    Int        @default(0)
+  diskonItem  Int        @default(0)
+  diskon      Int        @default(0)
+  pajakPersen Float      @default(0)
+  pajak       Int        @default(0)
+  total       Int        @default(0)
+  metode      String     @default("tunai")
+  bayar       Int        @default(0)
+  kembalian   Int        @default(0)
+  status      String     @default("selesai")
+  alasanVoid  String     @default("")
+  waktuVoid   DateTime?
+  catatan     String     @default("")
+  item        SaleItem[]
+  pembayaran  Payment[]
+
+  @@index([tanggal])
+  @@index([status])
+  @@index([pelangganId])
+}
+
+model SaleItem {
+  id       String @id @default(cuid())
+  saleId   String
+  sale     Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  produkId String
+  sku      String @default("")
+  nama     String
+  satuan   String @default("pcs")
+  harga    Int
+  hargaBeli Int   @default(0)
+  qty      Int
+  diskon   Int    @default(0)
+  subtotal Int
+
+  @@index([saleId])
+  @@index([produkId])
+}
+
+model Payment {
+  id     String @id @default(cuid())
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  metode String
+  jumlah Int
+
+  @@index([saleId])
+}
+
+model StockMutation {
+  id         String   @id @default(cuid())
+  tanggal    DateTime @default(now())
+  produkId   String
+  nama       String   @default("")
+  tipe       String
+  qty        Int
+  keterangan String   @default("")
+  ref        String   @default("")
+  petugas    String   @default("Kasir")
+
+  @@index([produkId])
+  @@index([tanggal])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  nama         String
+  username     String   @unique
+  peran        String   @default("kasir")
+  passwordHash String
+  aktif        Boolean  @default(true)
+  dibuatPada   DateTime @default(now())
+}
+
+model Setting {
+  id   Int    @id @default(1)
+  data Json   @default("{}")
+}

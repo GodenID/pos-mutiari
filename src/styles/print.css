@@ -1,0 +1,153 @@
+/* =========================================================================
+   Cetak — hanya area .cetak-area yang keluar di kertas / PDF
+   Dipakai untuk struk kasir 58/80mm dan lembar laporan
+   ========================================================================= */
+
+@media screen {
+  .cetak-saja {
+    display: none;
+  }
+}
+
+@media print {
+  @page {
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    height: auto;
+    background: #fff;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .cetak-area,
+  .cetak-area * {
+    visibility: visible;
+  }
+
+  .cetak-area {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    max-width: none;
+  }
+
+  .cetak-saja {
+    display: revert;
+  }
+
+  .tanpa-cetak,
+  .sidebar,
+  .topbar,
+  .bottomnav,
+  .modal-kaki,
+  .modal-kepala,
+  .toast-tumpuk,
+  .keranjang-fab {
+    display: none !important;
+  }
+
+  /* Struk: lebar kertas termal, tinta hitam penuh */
+  .cetak-area.struk {
+    width: 54mm;
+    border: 0;
+    padding: 0;
+    font-size: 10px;
+    color: #000;
+  }
+
+  .cetak-area.struk-80 {
+    width: 74mm;
+    font-size: 11px;
+  }
+
+  .cetak-area.struk .struk-kepala,
+  .cetak-area.struk .struk-meta,
+  .cetak-area.struk .struk-item,
+  .cetak-area.struk .struk-jumlah,
+  .cetak-area.struk .struk-terbilang {
+    border-color: #000;
+  }
+
+  /* Lembar laporan */
+  .cetak-area.lembar {
+    font-size: 10.5px;
+  }
+
+  .cetak-area .kartu,
+  .cetak-area .tabel thead th,
+  .cetak-area .tabel tbody td,
+  .cetak-area .tabel tfoot td {
+    border-color: #999 !important;
+    background: #fff !important;
+  }
+
+  .cetak-area .tabel thead th {
+    border-bottom: 1px solid #000 !important;
+  }
+
+  .cetak-area .stat {
+    border: 1px solid #999 !important;
+    background: #fff !important;
+  }
+
+  .cetak-area .stat::before {
+    display: none;
+  }
+
+  .cetak-kepala {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #000;
+  }
+
+  .cetak-kepala h1 {
+    font-size: 15px;
+  }
+
+  .cetak-kepala p {
+    font-size: 10px;
+    color: #333;
+  }
+
+  .tabel-bungkus {
+    overflow: visible !important;
+  }
+
+  .tabel thead th {
+    position: static;
+  }
+
+  tr,
+  .kartu,
+  .struk-item-baris {
+    break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: '';
+  }
+}
+
+
+/* Wadah khusus cetak: disalin dari elemen sumber lalu dicetak.
+   Tidak pernah tampil di layar.                                            */
+@media screen {
+  #cetak-wadah {
+    display: none !important;
+  }
+}
+
+@media print {
+  #cetak-wadah {
+    display: block;
+  }
+}
