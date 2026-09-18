@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '../db.js'
 import { authRequired } from '../auth.js'
 import { akhirHari, awalHari, nomorInvoice } from '../lib/angka.js'
+import { namaKasirOperasional } from '../lib/kasir.js'
 
 const app = new Hono()
 app.use('*', authRequired)
@@ -30,6 +31,7 @@ const simpanSchema = z.object({
   pelanggan: z.string().default(''),
   pelangganId: z.string().default(''),
   catatan: z.string().default(''),
+  kasir: z.string().default(''),
 })
 
 app.get('/', async (c) => {
@@ -157,7 +159,7 @@ app.post('/', async (c) => {
       }
 
       const nomor = nomorInvoice(sekarang, urut)
-      const kasir = user?.nama || 'Kasir'
+      const kasir = await namaKasirOperasional(tx, user, d.kasir)
       const sale = await tx.sale.create({
         data: {
           nomor,
@@ -229,6 +231,7 @@ app.post('/:id/void', async (c) => {
   if (trx.status === 'void') return c.json({ error: 'Sudah dibatalkan' }, 409)
 
   const waktu = new Date()
+  const petugas = await namaKasirOperasional(db, user)
   await db.$transaction(async (tx) => {
     await tx.sale.update({
       where: { id },
@@ -244,7 +247,7 @@ app.post('/:id/void', async (c) => {
           qty: it.qty,
           keterangan: `Pembatalan ${trx.nomor}${alasan ? ` — ${alasan}` : ''}`,
           ref: trx.nomor,
-          petugas: user?.nama || 'Kasir',
+          petugas,
         },
       })
     }

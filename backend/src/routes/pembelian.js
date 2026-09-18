@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '../db.js'
 import { adminOnly, authRequired } from '../auth.js'
 import { akhirHari, awalHari, nomorPO } from '../lib/angka.js'
+import { namaKasirOperasional } from '../lib/kasir.js'
 
 const app = new Hono()
 app.use('*', authRequired)
@@ -65,7 +66,7 @@ app.post('/', adminOnly, async (c) => {
   })
   const nomor = nomorPO(sekarang, hitung + 1)
   const total = itemBersih.reduce((a, b) => a + b.subtotal, 0)
-  const petugas = user?.nama || 'Kasir'
+  const petugas = await namaKasirOperasional(db, user)
 
   const pembelian = await db.$transaction(async (tx) => {
     const po = await tx.purchase.create({

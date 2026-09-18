@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { db } from '../db.js'
 import { authRequired } from '../auth.js'
+import { namaKasirOperasional } from '../lib/kasir.js'
 
 const app = new Hono()
 app.use('*', authRequired)
@@ -50,6 +51,7 @@ app.post('/', async (c) => {
   }
   if (delta === 0 && parsed.data.tipe !== 'setel') return c.json({ error: 'Tidak ada perubahan' }, 400)
 
+  const petugas = await namaKasirOperasional(db, user)
   const [produk] = await db.$transaction([
     db.product.update({ where: { id: p.id }, data: { stok: stokBaru } }),
     db.stockMutation.create({
@@ -60,7 +62,7 @@ app.post('/', async (c) => {
         qty: delta,
         keterangan: parsed.data.keterangan || '',
         ref: parsed.data.ref || '',
-        petugas: user?.nama || 'Kasir',
+        petugas,
       },
     }),
   ])
@@ -77,6 +79,7 @@ app.post('/opname', async (c) => {
   const parsed = opnameSchema.safeParse(body)
   if (!parsed.success) return c.json({ error: 'Data opname tidak valid' }, 400)
   const user = c.get('user')
+  const petugas = await namaKasirOperasional(db, user)
   let count = 0
   await db.$transaction(async (tx) => {
     for (const row of parsed.data.perubahan) {
@@ -94,7 +97,7 @@ app.post('/opname', async (c) => {
           qty: delta,
           keterangan: `${parsed.data.keterangan} (${p.stok} → ${baru})`,
           ref: 'OPNAME',
-          petugas: user?.nama || 'Kasir',
+          petugas,
         },
       })
       count += 1

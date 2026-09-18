@@ -208,7 +208,7 @@ export default function Pengaturan() {
               <Bidang
                 label="Nama kasir aktif"
                 penuh
-                petunjuk="Dipakai sebagai penanggung jawab transaksi & mutasi stok"
+                petunjuk="Dipakai sebagai penanggung jawab transaksi & mutasi stok — tidak ikut berubah saat ganti user login"
               >
                 <input
                   className="inp"
@@ -464,7 +464,7 @@ export default function Pengaturan() {
       <Kartu
         judul="Pengguna & Akses"
         ikon="pengguna"
-        sub="Akun login kasir & admin — nama kasir aktif mengikuti siapa yang masuk"
+          sub="Akun login kasir & admin"
         aksi={
           <button type="button" className="btn btn-sm btn-primer" onClick={() => penggunaBaru()}>
             <Icon nama="tambah" ukuran={14} />

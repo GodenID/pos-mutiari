@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '../db.js'
 import { adminOnly, authRequired } from '../auth.js'
 import { hapusObjek } from '../lib/s3.js'
+import { namaKasirOperasional } from '../lib/kasir.js'
 
 const app = new Hono()
 app.use('*', authRequired)
@@ -81,7 +82,7 @@ app.post('/', async (c) => {
             qty: p.stok,
             keterangan: 'Stok awal produk baru',
             ref: 'AWAL',
-            petugas: user?.nama || 'Kasir',
+            petugas: await namaKasirOperasional(tx, user),
           },
         })
       }
@@ -150,7 +151,7 @@ app.put('/:id', async (c) => {
           qty: stokBaru - lama.stok,
           keterangan: `Koreksi dari form produk (${lama.stok} → ${stokBaru})`,
           ref: 'EDIT',
-          petugas: user?.nama || 'Kasir',
+          petugas: await namaKasirOperasional(tx, user),
         },
       })
     }
