@@ -15,6 +15,10 @@ dist-ssr
 .env
 backend/.env
 
+# Screenshot nyasar (jangan ikut ke repo)
+1.jpg
+ini.jpg
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
