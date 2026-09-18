@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { db } from '../db.js'
 import { adminOnly, authRequired } from '../auth.js'
 import { daftarKunci, hapusBanyak, s3Aktif } from '../lib/s3.js'
-import { KATEGORI_DEMO, PELANGGAN_DEMO, PRODUK_DEMO, SATUAN_DEMO, SUPPLIER_DEMO } from '../../prisma/demoData.js'
+import { KATEGORI_DEMO, SATUAN_DEMO, SUPPLIER_DEMO } from '../../prisma/demoData.js'
 
 const app = new Hono()
 app.use('*', authRequired, adminOnly)
@@ -57,40 +57,6 @@ app.post('/bersih-foto', async (c) => {
   } catch (e) {
     return c.json({ error: `Gagal membaca bucket (cek izin ListBucket): ${e?.message || 'galat'}`.slice(0, 300) }, 502)
   }
-})
-
-/** Muat data master demo (tanpa riwayat transaksi palsu) */
-app.post('/demo', async (c) => {
-  const user = c.get('user')
-  const petugas = user?.nama || 'Admin'
-  const sekarang = new Date()
-  await db.$transaction(async (tx) => {
-    await bersih(tx)
-    await tanamDasar(tx)
-    for (const p of PELANGGAN_DEMO) {
-      await tx.customer.create({ data: { ...p, catatan: '' } })
-    }
-    for (const [sku, nama, kategori, satuan, beli, jual, stok, stokMin] of PRODUK_DEMO) {
-      const produk = await tx.product.create({
-        data: {
-          sku, nama, kategori, satuan,
-          hargaBeli: beli, hargaJual: jual,
-          stok, stokMin, aktif: true,
-        },
-      })
-      if (stok > 0) {
-        await tx.stockMutation.create({
-          data: {
-            produkId: produk.id, nama, tipe: 'masuk', qty: stok,
-            keterangan: 'Stok awal data demo', ref: 'AWAL', petugas,
-          },
-        })
-      }
-    }
-    void sekarang
-  })
-  const jumlah = await db.product.count()
-  return c.json({ ok: true, produk: jumlah })
 })
 
 export default app

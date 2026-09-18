@@ -470,11 +470,6 @@ export function AppStoreProvider({ children }) {
       },
 
       /* ------------------------------ Data ------------------------------ */
-      async muatDemo() {
-        await api.muatDemo()
-        await muatSemua()
-      },
-
       async kosongkanData() {
         await api.kosongkanData()
         await muatSemua()

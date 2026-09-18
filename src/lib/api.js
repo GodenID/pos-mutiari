@@ -106,7 +106,6 @@ export const api = {
   simpanPengaturan: (d) => put('/api/pengaturan', d),
 
   // Admin
-  muatDemo: () => post('/api/admin/demo', {}),
   kosongkanData: () => post('/api/admin/reset', {}),
   bersihFoto: () => post('/api/admin/bersih-foto', {}),
 
