@@ -4,6 +4,7 @@ import { db } from '../db.js'
 import { adminOnly, authRequired } from '../auth.js'
 import { hapusObjek } from '../lib/s3.js'
 import { namaKasirOperasional } from '../lib/kasir.js'
+import { stokAktif } from '../lib/fitur.js'
 
 const app = new Hono()
 app.use('*', authRequired)
@@ -50,6 +51,7 @@ app.post('/', async (c) => {
   const d = parsed.data
   const user = c.get('user')
   const sku = d.sku.trim() || `LOK${Date.now().toString().slice(-9)}`
+  const kelolaStok = await stokAktif(db)
 
   try {
     const produk = await db.$transaction(async (tx) => {
@@ -73,7 +75,7 @@ app.post('/', async (c) => {
         update: {},
         create: { nama: p.satuan },
       }).catch(() => null)
-      if (p.stok > 0) {
+      if (kelolaStok && p.stok > 0) {
         await tx.stockMutation.create({
           data: {
             produkId: p.id,
@@ -112,6 +114,7 @@ app.put('/:id', async (c) => {
 
   const stokBaru = d.stok !== undefined ? Math.round(Number(d.stok)) : lama.stok
   const berubah = stokBaru !== lama.stok
+  const kelolaStok = await stokAktif(db)
 
   // SKU kembar dicek manual agar pesannya ramah (bukan 500 generik)
   if (d.sku !== undefined) {
@@ -142,7 +145,7 @@ app.put('/:id', async (c) => {
     if (d.gambarKey !== undefined && lama.gambarKey && lama.gambarKey !== d.gambarKey) {
       await hapusObjek(lama.gambarKey)
     }
-    if (berubah) {
+    if (kelolaStok && berubah) {
       await tx.stockMutation.create({
         data: {
           produkId: id,

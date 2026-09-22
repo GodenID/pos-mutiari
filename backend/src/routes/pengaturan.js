@@ -17,6 +17,7 @@ const bawaan = {
   lebarStruk: '58mm',
   bunyiPindai: true,
   cetakOtomatis: false,
+  stokAktif: true,
   integrasi: { accurate: {}, jurnal: {} },
 }
 

@@ -312,6 +312,12 @@ export default function Pengaturan() {
                 checked={form.cetakOtomatis === true}
                 onChange={ubah('cetakOtomatis')}
               />
+              <Sakelar
+                label="Kelola stok barang"
+                keterangan="Bila mati, kasir bisa jualan tanpa batas stok dan pembelian tidak menambah stok"
+                checked={form.stokAktif !== false}
+                onChange={ubah('stokAktif')}
+              />
             </div>
           </Kartu>
 

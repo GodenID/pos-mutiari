@@ -85,6 +85,7 @@ export default function Kasir() {
   }, [diskonInput, diskonTipe, subtotal])
 
   const pajakPersen = pengaturan.pajakAktif ? Number(pengaturan.pajakPersen) || 0 : 0
+  const kelolaStok = pengaturan.stokAktif !== false
   const pajak = Math.round(((subtotal - diskonNota) * pajakPersen) / 100)
   const total = subtotal - diskonNota + pajak
 
@@ -109,11 +110,11 @@ export default function Kasir() {
     if (!p) return false
     const sudah = qtyDiKeranjang(p.id)
     const qtyBaru = sudah + jumlah
-    if (p.stok <= 0) {
+    if (kelolaStok && p.stok <= 0) {
       toast.galat(`${p.nama} — stok habis`)
       return false
     }
-    if (qtyBaru > p.stok) {
+    if (kelolaStok && qtyBaru > p.stok) {
       toast.galat(`Stok ${p.nama} tinggal ${angka(p.stok)} ${p.satuan}`)
       return false
     }
@@ -140,7 +141,7 @@ export default function Kasir() {
 
   function setQty(id, qty) {
     const p = petaProduk.get(id)
-    const batas = p ? p.stok : qty
+    const batas = kelolaStok && p ? p.stok : qty
     if (qty <= 0) {
       setKeranjang((k) => k.filter((i) => i.produkId !== id))
       return
@@ -353,7 +354,7 @@ export default function Kasir() {
             <div className="produk-grid">
               {hasil.map((p) => {
                 const diKeranjang = qtyDiKeranjang(p.id)
-                const habis = p.stok <= 0
+                const habis = kelolaStok && p.stok <= 0
                 return (
                   <button
                     key={p.id}
@@ -381,7 +382,7 @@ export default function Kasir() {
                       <span className="produk-stok">
                         {habis ? 'Habis' : `${angka(p.stok)} ${p.satuan}`}
                       </span>
-                      {statusStok(p) === 'menipis' ? (
+                      {kelolaStok && statusStok(p) === 'menipis' ? (
                         <Lencana warna="kuning">Menipis</Lencana>
                       ) : (
                         <span className="num tersier">{p.sku.slice(-4)}</span>

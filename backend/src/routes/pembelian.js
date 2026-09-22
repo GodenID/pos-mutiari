@@ -4,6 +4,7 @@ import { db } from '../db.js'
 import { adminOnly, authRequired } from '../auth.js'
 import { akhirHari, awalHari, nomorPO } from '../lib/angka.js'
 import { namaKasirOperasional } from '../lib/kasir.js'
+import { stokAktif } from '../lib/fitur.js'
 
 const app = new Hono()
 app.use('*', authRequired)
@@ -67,6 +68,7 @@ app.post('/', adminOnly, async (c) => {
   const nomor = nomorPO(sekarang, hitung + 1)
   const total = itemBersih.reduce((a, b) => a + b.subtotal, 0)
   const petugas = await namaKasirOperasional(db, user)
+  const kelolaStok = await stokAktif(db)
 
   const pembelian = await db.$transaction(async (tx) => {
     const po = await tx.purchase.create({
@@ -82,7 +84,7 @@ app.post('/', adminOnly, async (c) => {
       },
       include: { item: true },
     })
-    for (const it of itemBersih) {
+    for (const it of (kelolaStok ? itemBersih : [])) {
       const lama = peta.get(it.produkId)
       const stokLama = Math.max(0, lama.stok || 0)
       const stokBaru = stokLama + it.qty

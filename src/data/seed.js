@@ -168,6 +168,7 @@ export const PENGATURAN_AWAL = {
   lebarStruk: '58mm',
   bunyiPindai: true,
   cetakOtomatis: false,
+  stokAktif: true,
   /* Kredensial integrasi akuntansi — rahasia idealnya pindah ke backend */
   integrasi: {
     accurate: { clientId: '', clientSecret: '', redirectUri: '', dbId: '' },

@@ -4,6 +4,7 @@ import { db } from '../db.js'
 import { authRequired } from '../auth.js'
 import { akhirHari, awalHari, nomorInvoice } from '../lib/angka.js'
 import { namaKasirOperasional } from '../lib/kasir.js'
+import { stokAktif } from '../lib/fitur.js'
 
 const app = new Hono()
 app.use('*', authRequired)
@@ -86,11 +87,14 @@ app.post('/', async (c) => {
   const ids = [...new Set(d.item.map((i) => i.produkId))]
   const produkList = await db.product.findMany({ where: { id: { in: ids } } })
   const peta = new Map(produkList.map((p) => [p.id, p]))
+  const kelolaStok = await stokAktif(db)
   for (const it of d.item) {
     const p = peta.get(it.produkId)
     if (!p) return c.json({ error: `Produk tidak ditemukan` }, 404)
     if (p.aktif === false) return c.json({ error: `${p.nama} sudah nonaktif` }, 409)
-    if (p.stok < it.qty) return c.json({ error: `Stok ${p.nama} kurang (sisa ${p.stok})` }, 409)
+    if (kelolaStok && p.stok < it.qty) {
+      return c.json({ error: `Stok ${p.nama} kurang (sisa ${p.stok})` }, 409)
+    }
   }
 
   const item = d.item.map((it) => {
@@ -185,6 +189,7 @@ app.post('/', async (c) => {
       })
 
       for (const it of item) {
+        if (!kelolaStok) continue
         const upd = await tx.product.updateMany({
           where: { id: it.produkId, stok: { gte: it.qty } },
           data: { stok: { decrement: it.qty } },
@@ -232,12 +237,14 @@ app.post('/:id/void', async (c) => {
 
   const waktu = new Date()
   const petugas = await namaKasirOperasional(db, user)
+  const kembalikanStok = await stokAktif(db)
   await db.$transaction(async (tx) => {
     await tx.sale.update({
       where: { id },
       data: { status: 'void', alasanVoid: alasan, waktuVoid: waktu },
     })
     for (const it of trx.item) {
+      if (!kembalikanStok) continue
       await tx.product.update({ where: { id: it.produkId }, data: { stok: { increment: it.qty } } }).catch(() => null)
       await tx.stockMutation.create({
         data: {
