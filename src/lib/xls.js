@@ -1,8 +1,8 @@
 /* =========================================================================
    Ekspor XLSX yang rapi (ExcelJS, dimuat malas hanya saat diklik).
 
-   Tanda tangan sama persis dengan unduhCsv:
      unduhXls(namaFile, kolom[], baris[][], meta[])
+     unduhXlsMulti(namaFile, [{ nama, kolom, baris, meta }])
    Hasil: judul besar + subjudul, header hijau tebal, garis tepi,
    baris belang, lebar kolom otomatis, freeze + filter, siap cetak.
    ========================================================================= */
@@ -18,14 +18,8 @@ const tepi = {
   right: { style: 'thin', color: { argb: GARIS } },
 }
 
-export async function unduhXls(namaFile, kolom = [], baris = [], meta = []) {
-  const { default: ExcelJS } = await import('exceljs')
-  const buku = new ExcelJS.Workbook()
-  buku.creator = 'Mutiari Garden POS'
-  buku.created = new Date()
-
+function tulisSheet(sheet, { kolom = [], baris = [], meta = [] }) {
   const nKolom = Math.max(kolom.length, 1)
-  const sheet = buku.addWorksheet('Data', { properties: { defaultRowHeight: 18 } })
 
   let r = 1
   if (meta.length) {
@@ -97,7 +91,19 @@ export async function unduhXls(namaFile, kolom = [], baris = [], meta = []) {
     fitToWidth: 1,
     fitToHeight: 0,
   }
+}
 
+async function unduhBuku(namaFile, sheets) {
+  const { default: ExcelJS } = await import('exceljs')
+  const buku = new ExcelJS.Workbook()
+  buku.creator = 'Mutiari Garden POS'
+  buku.created = new Date()
+  for (const s of sheets) {
+    const sheet = buku.addWorksheet(s.nama || 'Data', {
+      properties: { defaultRowHeight: 18 },
+    })
+    tulisSheet(sheet, s)
+  }
   const buffer = await buku.xlsx.writeBuffer()
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -110,4 +116,12 @@ export async function unduhXls(namaFile, kolom = [], baris = [], meta = []) {
   a.click()
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 4000)
+}
+
+export async function unduhXls(namaFile, kolom = [], baris = [], meta = []) {
+  return unduhBuku(namaFile, [{ nama: 'Data', kolom, baris, meta }])
+}
+
+export async function unduhXlsMulti(namaFile, sheets = []) {
+  return unduhBuku(namaFile, sheets.length ? sheets : [{ nama: 'Data' }])
 }

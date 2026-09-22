@@ -34,7 +34,7 @@ import {
   tanggalPanjang,
 } from '../lib/format.js'
 import { stempelFile } from '../lib/csv.js'
-import { unduhXls } from '../lib/xls.js'
+import { unduhXlsMulti } from '../lib/xls.js'
 
 const PER_HALAMAN = 15
 
@@ -119,28 +119,7 @@ export default function Penjualan() {
 
   const eksporXls = async () => {
     try {
-      await unduhXls(
-      `penjualan_${stempelFile()}`,
-      [
-        'No. Nota',
-        'Tanggal',
-        'Jam',
-        'Kasir',
-        'Pelanggan',
-        'Jenis Item',
-        'Total Qty',
-        'Subtotal',
-        'Diskon Item',
-        'Diskon Nota',
-        'Pajak',
-        'Total',
-        'Metode',
-        'Rincian Bayar',
-        'Bayar',
-        'Kembalian',
-        'Status',
-      ],
-      tersaring.map((t) => [
+      const rekap = tersaring.map((t) => [
         t.nomor,
         tanggal(t.tanggal),
         jam(t.tanggal),
@@ -160,18 +139,85 @@ export default function Penjualan() {
         t.bayar,
         t.kembalian,
         t.status === 'void' ? 'Dibatalkan' : 'Selesai',
-      ]),
-      [
-        `Laporan Penjualan — ${rentang.label}`,
-        `${tersaring.length} transaksi • omzet ${rupiah(r.omzet)}`,
-        `Dicetak ${tanggalJam(new Date())}`,
-      ],
-      )
+      ])
+      const rincian = []
+      tersaring.forEach((t) => {
+        t.item.forEach((it) => {
+          rincian.push([
+            t.nomor,
+            tanggal(t.tanggal),
+            jam(t.tanggal),
+            t.kasir,
+            t.pelanggan || '-',
+            it.sku,
+            it.nama,
+            it.satuan,
+            it.qty,
+            it.harga,
+            it.diskon || 0,
+            it.subtotal,
+            t.status === 'void' ? 'Dibatalkan' : 'Selesai',
+          ])
+        })
+      })
+      await unduhXlsMulti(`penjualan_${stempelFile()}`, [
+        {
+          nama: 'Rekap Nota',
+          kolom: [
+            'No. Nota',
+            'Tanggal',
+            'Jam',
+            'Kasir',
+            'Pelanggan',
+            'Jenis Item',
+            'Total Qty',
+            'Subtotal',
+            'Diskon Item',
+            'Diskon Nota',
+            'Pajak',
+            'Total',
+            'Metode',
+            'Rincian Bayar',
+            'Bayar',
+            'Kembalian',
+            'Status',
+          ],
+          baris: rekap,
+          meta: [
+            `Laporan Penjualan — ${rentang.label}`,
+            `${tersaring.length} transaksi • omzet ${rupiah(r.omzet)}`,
+            `Dicetak ${tanggalJam(new Date())}`,
+          ],
+        },
+        {
+          nama: 'Rincian Item',
+          kolom: [
+            'No. Nota',
+            'Tanggal',
+            'Jam',
+            'Kasir',
+            'Pelanggan',
+            'SKU',
+            'Nama Produk',
+            'Satuan',
+            'Qty',
+            'Harga',
+            'Diskon',
+            'Subtotal',
+            'Status',
+          ],
+          baris: rincian,
+          meta: [
+            `Rincian Item Terjual — ${rentang.label}`,
+            `${rincian.length} baris dari ${tersaring.length} transaksi`,
+          ],
+        },
+      ])
     } catch {
       toast.galat('Gagal mengekspor ke Excel')
       return
     }
-    toast.sukses('Data penjualan diekspor ke Excel')
+    toast.sukses('Data penjualan diekspor ke Excel (2 sheet)')
   }
 
   return (

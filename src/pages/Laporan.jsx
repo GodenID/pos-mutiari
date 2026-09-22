@@ -39,7 +39,7 @@ import {
   tanggalJam,
 } from '../lib/format.js'
 import { stempelFile } from '../lib/csv.js'
-import { unduhXls } from '../lib/xls.js'
+import { unduhXls, unduhXlsMulti } from '../lib/xls.js'
 
 const TAB = [
   { id: 'ringkasan', nama: 'Ringkasan' },
@@ -105,6 +105,26 @@ export default function Laporan() {
 
   const judulTab = TAB.find((t) => t.id === tab)?.nama || 'Laporan'
 
+  const katProduk = useMemo(() => new Map(produk.map((p) => [p.id, p.kategori])), [produk])
+
+  const lembarRincianProduk = () => ({
+    nama: 'Rincian Produk',
+    kolom: ['SKU', 'Produk', 'Kategori', 'Satuan', 'Qty Terjual', 'Omzet', 'Laba Kotor'],
+    baris: data.terlaris.map((p) => [
+      p.sku,
+      p.nama,
+      katProduk.get(p.produkId) || '-',
+      p.satuan,
+      p.qty,
+      p.omzet,
+      p.laba,
+    ]),
+    meta: [
+      `Rincian Produk Terjual — ${rentang.label}`,
+      `${data.terlaris.length} jenis produk`,
+    ],
+  })
+
   const cetak = () =>
     cetakElemen(
       acuanCetak.current,
@@ -122,18 +142,21 @@ export default function Laporan() {
         [`Produk Terlaris — ${rentang.label}`, `Dicetak ${tanggalJam(new Date())}`],
       )
     } else if (tab === 'laba') {
-      await unduhXls(
-        `laba_kotor_${stempelFile()}`,
-        ['Tanggal', 'Transaksi', 'Item Terjual', 'Omzet', 'Laba Kotor'],
-        data.harian.map((d) => [
-          tanggal(d.tanggal),
-          d.transaksi,
-          d.item,
-          d.omzet,
-          d.laba,
-        ]),
-        [`Laba Kotor Harian — ${rentang.label}`, `Dicetak ${tanggalJam(new Date())}`],
-      )
+      await unduhXlsMulti(`laba_kotor_${stempelFile()}`, [
+        {
+          nama: 'Laba Harian',
+          kolom: ['Tanggal', 'Transaksi', 'Item Terjual', 'Omzet', 'Laba Kotor'],
+          baris: data.harian.map((d) => [
+            tanggal(d.tanggal),
+            d.transaksi,
+            d.item,
+            d.omzet,
+            d.laba,
+          ]),
+          meta: [`Laba Kotor Harian — ${rentang.label}`, `Dicetak ${tanggalJam(new Date())}`],
+        },
+        lembarRincianProduk(),
+      ])
     } else if (tab === 'stok') {
       await unduhXls(
         `persediaan_${stempelFile()}`,
@@ -169,22 +192,25 @@ export default function Laporan() {
         ],
       )
     } else {
-      await unduhXls(
-        `ringkasan_penjualan_${stempelFile()}`,
-        ['Tanggal', 'Transaksi', 'Item', 'Omzet', 'Laba Kotor'],
-        data.harian.map((d) => [
-          tanggal(d.tanggal),
-          d.transaksi,
-          d.item,
-          d.omzet,
-          d.laba,
-        ]),
-        [
-          `Ringkasan Penjualan — ${rentang.label}`,
-          `Omzet ${rupiah(data.rKini.omzet)} • Laba ${rupiah(data.rKini.labaKotor)}`,
-          `Dicetak ${tanggalJam(new Date())}`,
-        ],
-      )
+      await unduhXlsMulti(`ringkasan_penjualan_${stempelFile()}`, [
+        {
+          nama: 'Ringkasan Harian',
+          kolom: ['Tanggal', 'Transaksi', 'Item', 'Omzet', 'Laba Kotor'],
+          baris: data.harian.map((d) => [
+            tanggal(d.tanggal),
+            d.transaksi,
+            d.item,
+            d.omzet,
+            d.laba,
+          ]),
+          meta: [
+            `Ringkasan Penjualan — ${rentang.label}`,
+            `Omzet ${rupiah(data.rKini.omzet)} • Laba ${rupiah(data.rKini.labaKotor)}`,
+            `Dicetak ${tanggalJam(new Date())}`,
+          ],
+        },
+        lembarRincianProduk(),
+      ])
     }
     } catch {
       toast.galat('Gagal mengekspor ke Excel')
