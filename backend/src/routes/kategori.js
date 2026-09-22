@@ -45,11 +45,11 @@ app.delete('/:id', async (c) => {
   const id = c.req.param('id')
   const lama = await db.category.findUnique({ where: { id } })
   if (!lama) return c.json({ error: 'Kategori tidak ditemukan' }, 404)
-  await db.$transaction(async (tx) => {
-    await tx.product.updateMany({ where: { kategori: lama.nama }, data: { kategori: 'Lain-lain' } })
-    await tx.category.delete({ where: { id } })
-    await tx.category.upsert({ where: { nama: 'Lain-lain' }, update: {}, create: { nama: 'Lain-lain' } })
-  })
+  const dipakai = await db.product.count({ where: { kategori: lama.nama } })
+  if (dipakai > 0) {
+    return c.json({ error: `"${lama.nama}" dipakai ${dipakai} produk — pindahkan dulu ke kategori lain` }, 409)
+  }
+  await db.category.delete({ where: { id } }).catch(() => null)
   return c.json({ ok: true })
 })
 

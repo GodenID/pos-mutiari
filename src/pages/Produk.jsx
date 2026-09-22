@@ -74,7 +74,8 @@ export default function Produk() {
   const [urut, setUrut] = useState({ kunci: 'nama', arah: 'naik' })
   const [halaman, setHalaman] = useState(1)
 
-  const [modal, setModal] = useState(null) // 'form' | 'kategori' | 'satuan'
+  const [modal, setModal] = useState(null) // 'form' | null
+  const [kelola, setKelola] = useState(null) // 'kategori' | 'satuan' | null — menumpuk di atas form
   const [imporBuka, setImporBuka] = useState(false)
   const [sedangUbah, setSedangUbah] = useState(null)
   const [form, setForm] = useState(FORM_KOSONG)
@@ -334,7 +335,7 @@ export default function Produk() {
           </p>
         </div>
         <div className="row g6 wrap">
-          <button type="button" className="btn" onClick={() => setModal('kategori')}>
+          <button type="button" className="btn" onClick={() => setKelola('kategori')}>
             <Icon nama="label" ukuran={15} />
             Kategori
           </button>
@@ -698,7 +699,7 @@ export default function Produk() {
               <button
                 type="button"
                 className="btn"
-                onClick={() => setModal('satuan')}
+                onClick={() => setKelola('satuan')}
                 title="Kelola satuan"
               >
                 <Icon nama="tambah" ukuran={14} />
@@ -723,7 +724,7 @@ export default function Produk() {
               <button
                 type="button"
                 className="btn"
-                onClick={() => setModal('kategori')}
+                onClick={() => setKelola('kategori')}
                 title="Kelola kategori"
               >
                 <Icon nama="tambah" ukuran={14} />
@@ -811,10 +812,18 @@ export default function Produk() {
       </Modal>
 
       {/* ======================== Modal kategori ======================== */}
-      <ModalKategori buka={modal === 'kategori'} tutup={() => setModal(null)} />
+      <ModalKategori
+        buka={kelola === 'kategori'}
+        tutup={() => setKelola(null)}
+        onPilih={(nama) => setForm((f) => ({ ...f, kategori: nama }))}
+      />
 
       {/* ========================= Modal satuan ========================= */}
-      <ModalSatuan buka={modal === 'satuan'} tutup={() => setModal(null)} />
+      <ModalSatuan
+        buka={kelola === 'satuan'}
+        tutup={() => setKelola(null)}
+        onPilih={(nama) => setForm((f) => ({ ...f, satuan: nama }))}
+      />
 
       {/* ========================= Modal crop foto ======================== */}
       <ModalCropFoto
@@ -1053,7 +1062,7 @@ function ModalImpor({ tutup }) {
 
 /* ------------------------------- Kategori -------------------------------- */
 
-function ModalKategori({ buka, tutup }) {
+function ModalKategori({ buka, tutup, onPilih }) {
   const { kategori, produk } = useStatus()
   const aksi = useAksi()
   const toast = useToast()
@@ -1075,6 +1084,7 @@ function ModalKategori({ buka, tutup }) {
       await aksi.tambahKategori(nama)
       toast.sukses(`Kategori "${nama}" ditambahkan`)
       setBaru('')
+      onPilih?.(nama)
     } catch (e) {
       toast.galat(e?.message || 'Gagal menambah kategori')
     }
@@ -1191,9 +1201,7 @@ function ModalKategori({ buka, tutup }) {
                       onClick={async () => {
                         try {
                           await aksi.hapusKategori(k.id, k.nama)
-                          toast.info(
-                            `Kategori "${k.nama}" dihapus. Produk dipindah ke "Lain-lain".`,
-                          )
+                          toast.info(`Kategori "${k.nama}" dihapus`)
                         } catch (e) {
                           toast.galat(e?.message || 'Gagal menghapus kategori')
                         }
@@ -1215,7 +1223,7 @@ function ModalKategori({ buka, tutup }) {
 
 /* -------------------------------- Satuan --------------------------------- */
 
-function ModalSatuan({ buka, tutup }) {
+function ModalSatuan({ buka, tutup, onPilih }) {
   const { satuan, produk } = useStatus()
   const aksi = useAksi()
   const toast = useToast()
@@ -1237,6 +1245,7 @@ function ModalSatuan({ buka, tutup }) {
       await aksi.tambahSatuan(nama)
       toast.sukses(`Satuan "${nama}" ditambahkan`)
       setBaru('')
+      onPilih?.(nama)
     } catch (e) {
       toast.galat(e?.message || 'Gagal menambah satuan')
     }

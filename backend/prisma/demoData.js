@@ -9,7 +9,6 @@ export const KATEGORI_DEMO = [
   'Perawatan Diri',
   'Rumah Tangga',
   'Alat Tulis',
-  'Lain-lain',
 ]
 
 export const SATUAN_DEMO = ['pcs', 'pack', 'botol', 'kaleng', 'sachet', 'kg', 'liter', 'renteng', 'dus']
