@@ -86,6 +86,13 @@ function PerluAdmin({ children }) {
   return children
 }
 
+/** Stok dimatikan di Pengaturan — lempar ke beranda */
+function PerluStok({ children }) {
+  const { pengaturan } = useStatus()
+  if (pengaturan.stokAktif === false) return <Navigate to="/" replace />
+  return children
+}
+
 export default function App() {
   return (
     <Routes>
@@ -108,7 +115,14 @@ export default function App() {
                   }
                 />
                 <Route path="/produk" element={<Produk />} />
-                <Route path="/stok" element={<Stok />} />
+                <Route
+                  path="/stok"
+                  element={
+                    <PerluStok>
+                      <Stok />
+                    </PerluStok>
+                  }
+                />
                 <Route path="/penjualan" element={<Penjualan />} />
                 <Route path="/integrasi/callback" element={<CallbackIntegrasi />} />
                 <Route path="/laporan" element={<Laporan />} />

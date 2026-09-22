@@ -358,9 +358,11 @@ function TabPembelian() {
               return
             }
             toast.sukses(
-              `${po.nomor} tersimpan — PDF otomatis terunduh, stok +${angka(
-                po.item.reduce((a, b) => a + b.qty, 0),
-              )} unit, harga beli diperbarui`,
+              pengaturan.stokAktif === false
+                ? `${po.nomor} tersimpan — PDF otomatis terunduh (mode tanpa stok: hanya pencatatan)`
+                : `${po.nomor} tersimpan — PDF otomatis terunduh, stok +${angka(
+                    po.item.reduce((a, b) => a + b.qty, 0),
+                  )} unit, harga beli diperbarui`,
             )
             setFormBuka(false)
           } else {
@@ -435,7 +437,7 @@ function TabPembelian() {
 const BARIS_PO_KOSONG = () => ({ produkId: '', cari: '', qty: '', hargaBeli: '' })
 
 function ModalFormPO({ buka, tutup, onSimpan }) {
-  const { produk, supplier } = useStatus()
+  const { produk, supplier, pengaturan } = useStatus()
   const aksi = useAksi()
   const toast = useToast()
 
@@ -535,8 +537,12 @@ function ModalFormPO({ buka, tutup, onSimpan }) {
     <Modal
       buka={buka}
       tutup={tutup}
-      judul="Buat Pembelian (PO)"
-      keterangan="Stok bertambah & harga beli diperbarui saat disimpan"
+        judul="Buat Pembelian (PO)"
+        keterangan={
+          pengaturan.stokAktif === false
+            ? 'Mode tanpa stok: hanya pencatatan, stok tidak berubah'
+            : 'Stok bertambah & harga beli diperbarui saat disimpan'
+        }
       ukuran="lg"
       kaki={
         <>

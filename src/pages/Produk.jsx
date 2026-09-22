@@ -60,9 +60,11 @@ const FORM_KOSONG = {
 }
 
 export default function Produk() {
-  const { produk, kategori, satuan, meta } = useStatus()
+  const { produk, kategori, satuan, meta, pengaturan } = useStatus()
   const aksi = useAksi()
   const toast = useToast()
+
+  const kelolaStok = pengaturan.stokAktif !== false
 
   const daftarSatuan = (satuan?.length ? satuan.map((s) => s.nama) : SATUAN)
 
@@ -459,9 +461,11 @@ export default function Produk() {
                     <ThUrut kunci="margin" urut={urut} onUrut={gantiUrut} kanan>
                       Margin
                     </ThUrut>
-                    <ThUrut kunci="stok" urut={urut} onUrut={gantiUrut}>
-                      Stok
-                    </ThUrut>
+                    {kelolaStok ? (
+                      <ThUrut kunci="stok" urut={urut} onUrut={gantiUrut}>
+                        Stok
+                      </ThUrut>
+                    ) : null}
                     <th aria-label="Aksi" />
                   </tr>
                 </thead>
@@ -505,15 +509,17 @@ export default function Produk() {
                           {rupiah(p.hargaJual - p.hargaBeli)}
                         </div>
                       </td>
-                      <td>
-                        <div className="row g6">
-                          <span className="num tebal">{angka(p.stok)}</span>
-                          <LencanaStok produk={p} ringkas />
-                        </div>
-                        <div style={{ marginTop: 5 }}>
-                          <BatangStok produk={p} />
-                        </div>
-                      </td>
+                      {kelolaStok ? (
+                        <td>
+                          <div className="row g6">
+                            <span className="num tebal">{angka(p.stok)}</span>
+                            <LencanaStok produk={p} ringkas />
+                          </div>
+                          <div style={{ marginTop: 5 }}>
+                            <BatangStok produk={p} />
+                          </div>
+                        </td>
+                      ) : null}
                       <td>
                         <div className="sel-aksi">
                           <button
@@ -592,12 +598,14 @@ export default function Produk() {
                     <div className="daftar-meta num">
                       {p.sku} • {p.kategori}
                     </div>
-                    <div className="row g6" style={{ marginTop: 5 }}>
-                      <LencanaStok produk={p} ringkas />
-                      <span className="xs tersier num">
-                        stok {angka(p.stok)} {p.satuan}
-                      </span>
-                    </div>
+                    {kelolaStok ? (
+                      <div className="row g6" style={{ marginTop: 5 }}>
+                        <LencanaStok produk={p} ringkas />
+                        <span className="xs tersier num">
+                          stok {angka(p.stok)} {p.satuan}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                   <div>
                     <div className="daftar-nilai">{rupiah(p.hargaJual)}</div>
@@ -761,31 +769,35 @@ export default function Produk() {
             />
           </Bidang>
 
-          <Bidang
-            label={sedangUbah ? 'Stok saat ini' : 'Stok awal'}
-            petunjuk={
-              sedangUbah
-                ? 'Perubahan tercatat sebagai penyesuaian stok'
-                : 'Tercatat sebagai barang masuk'
-            }
-          >
-            <InpAngka
-              nilai={form.stok}
-              onUbah={(v) => setForm({ ...form, stok: v })}
-              akhiran={form.satuan}
-            />
-          </Bidang>
+          {kelolaStok ? (
+            <Bidang
+              label={sedangUbah ? 'Stok saat ini' : 'Stok awal'}
+              petunjuk={
+                sedangUbah
+                  ? 'Perubahan tercatat sebagai penyesuaian stok'
+                  : 'Tercatat sebagai barang masuk'
+              }
+            >
+              <InpAngka
+                nilai={form.stok}
+                onUbah={(v) => setForm({ ...form, stok: v })}
+                akhiran={form.satuan}
+              />
+            </Bidang>
+          ) : null}
 
-          <Bidang
-            label="Stok minimum"
-            petunjuk="Batas peringatan restok"
-          >
-            <InpAngka
-              nilai={form.stokMin}
-              onUbah={(v) => setForm({ ...form, stokMin: v })}
-              akhiran={form.satuan}
-            />
-          </Bidang>
+          {kelolaStok ? (
+            <Bidang
+              label="Stok minimum"
+              petunjuk="Batas peringatan restok"
+            >
+              <InpAngka
+                nilai={form.stokMin}
+                onUbah={(v) => setForm({ ...form, stokMin: v })}
+                akhiran={form.satuan}
+              />
+            </Bidang>
+          ) : null}
 
           <div className="rentang-penuh">
             <Sakelar

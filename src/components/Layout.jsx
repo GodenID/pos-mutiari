@@ -14,7 +14,7 @@ const MENU = [
   {
     grup: null,
     item: [
-      { ke: '/', ikon: 'dasbor', nama: 'Dasbor', ujung: true },
+      { ke: '/', ikon: 'dasbor', nama: 'Dashboard', ujung: true },
       { ke: '/kasir', ikon: 'kasir', nama: 'Kasir' },
     ],
   },
@@ -46,7 +46,7 @@ const MENU = [
 ]
 
 const BILAH_BAWAH = [
-  { ke: '/', ikon: 'dasbor', nama: 'Dasbor', ujung: true },
+  { ke: '/', ikon: 'dasbor', nama: 'Dashboard', ujung: true },
   { ke: '/kasir', ikon: 'kasir', nama: 'Kasir' },
   { ke: '/produk', ikon: 'kotak', nama: 'Produk' },
   { ke: '/penjualan', ikon: 'struk', nama: 'Penjualan' },
@@ -54,7 +54,7 @@ const BILAH_BAWAH = [
 ]
 
 const HALAMAN = {
-  '/': { judul: 'Dasbor', sub: 'Ringkasan operasional toko hari ini' },
+  '/': { judul: 'Dashboard', sub: 'Ringkasan operasional toko hari ini' },
   '/kasir': { judul: 'Kasir', sub: 'Buat transaksi penjualan baru' },
   '/pelanggan': { judul: 'Pelanggan', sub: 'Data pembeli dan riwayat belanja' },
   '/supplier': {
@@ -90,7 +90,7 @@ function JamSekarang() {
 
 /* -------------------------------- Sidebar -------------------------------- */
 
-function IsiSidebar({ lonceng, pengaturan, admin, pengguna, onKeluar }) {
+function IsiSidebar({ lonceng, pengaturan, admin, pengguna, onKeluar, stokAktif }) {
   const menuTampil = MENU.map((bagian) => ({
     ...bagian,
     item: bagian.item.filter((m) => !m.admin || admin),
@@ -112,23 +112,35 @@ function IsiSidebar({ lonceng, pengaturan, admin, pengguna, onKeluar }) {
         {menuTampil.map((bagian, i) => (
           <div key={bagian.grup || `grup-${i}`}>
             {bagian.grup ? <div className="nav-grup label">{bagian.grup}</div> : null}
-            {bagian.item.map((m) => (
-              <NavLink
-                key={m.ke}
-                to={m.ke}
-                end={m.ujung}
-                className={({ isActive }) => `nav-item ${isActive ? 'aktif' : ''}`}
-                title={m.nama}
-              >
-                <Icon nama={m.ikon} ukuran={16} />
-                <span className="isi">{m.nama}</span>
-                {m.lonceng === 'stok' && lonceng > 0 ? (
-                  <span className="nav-lonceng" title={`${lonceng} produk perlu perhatian`}>
-                    {lonceng}
-                  </span>
-                ) : null}
-              </NavLink>
-            ))}
+            {bagian.item.map((m) =>
+              m.ke === '/stok' && !stokAktif ? (
+                <span
+                  key={m.ke}
+                  className="nav-item nav-mati"
+                  title="Fitur stok nonaktif — nyalakan di Pengaturan"
+                  aria-disabled="true"
+                >
+                  <Icon nama={m.ikon} ukuran={16} />
+                  <span className="isi">{m.nama}</span>
+                </span>
+              ) : (
+                <NavLink
+                  key={m.ke}
+                  to={m.ke}
+                  end={m.ujung}
+                  className={({ isActive }) => `nav-item ${isActive ? 'aktif' : ''}`}
+                  title={m.nama}
+                >
+                  <Icon nama={m.ikon} ukuran={16} />
+                  <span className="isi">{m.nama}</span>
+                  {m.lonceng === 'stok' && lonceng > 0 ? (
+                    <span className="nav-lonceng" title={`${lonceng} produk perlu perhatian`}>
+                      {lonceng}
+                    </span>
+                  ) : null}
+                </NavLink>
+              ),
+            )}
           </div>
         ))}
       </nav>
@@ -179,8 +191,9 @@ export default function Layout({ children }) {
   const [ciut, setCiut] = useState(bacaCiut)
 
   const admin = pengguna?.peran === 'admin'
+  const kelolaStok = pengaturan.stokAktif !== false
   const kritis = stokKritis(produk)
-  const lonceng = kritis.habis.length + kritis.menipis.length
+  const lonceng = kelolaStok ? kritis.habis.length + kritis.menipis.length : 0
   const meta = HALAMAN[lokasi.pathname] || { judul: 'Mutiari Garden', sub: '' }
   const halamanKasir = lokasi.pathname === '/kasir'
 
@@ -207,6 +220,7 @@ export default function Layout({ children }) {
           admin={admin}
           pengguna={pengguna}
           onKeluar={keluar}
+          stokAktif={kelolaStok}
         />
       </aside>
 

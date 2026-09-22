@@ -255,6 +255,15 @@ export function AppStoreProvider({ children }) {
           } finally {
             setMemuat(false)
           }
+          // Nama kasir aktif mengikuti siapa yang login (tetap bisa diubah manual di Pengaturan)
+          if (pengguna?.nama) {
+            try {
+              const { pengaturan } = await api.simpanPengaturan({ kasir: pengguna.nama })
+              setStatus((s) => ({ ...s, pengaturan }))
+            } catch {
+              /* abaikan — nama lama tetap dipakai */
+            }
+          }
           return { ok: true, pengguna }
         } catch (e) {
           return { ok: false, galat: e?.message || 'Gagal masuk' }

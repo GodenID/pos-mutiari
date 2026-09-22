@@ -104,6 +104,13 @@
   font-weight: 600;
 }
 
+/* Menu nonaktif (fitur dimatikan) */
+
+.nav-mati {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Crop foto: geser + zoom */
 
 .crop-kotak {
