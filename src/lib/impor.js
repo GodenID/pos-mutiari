@@ -32,6 +32,63 @@ export async function unduhTemplateExcel() {
   ])
 }
 
+/* ------------------------- Template impor stok ------------------------- */
+
+export const KOLOM_TEMPLATE_STOK = ['SKU/Barcode', 'Nama Produk (info)', 'Stok Fisik']
+
+const CONTOH_BARIS_STOK = [
+  ['8998866101011', 'Indomie Goreng (contoh — baris ini boleh dihapus)', 48],
+]
+
+export async function unduhTemplateStok() {
+  await unduhXls(`template_impor_stok`, KOLOM_TEMPLATE_STOK, CONTOH_BARIS_STOK, [
+    'Template impor stok — cocokkan SKU/Barcode dengan master produk.',
+    'Kolom "Stok Fisik" diisi hasil hitungan fisik. Diterapkan sebagai stok opname.',
+  ])
+}
+
+/**
+ * Validasi baris impor stok (hasil bacaFileProduk).
+ * @returns {Array<{no, mentah, ok, galat:Array<string>, data, tetap:boolean}>}
+ * data = { produkId, nama, satuan, stokLama, stokBaru }
+ */
+export function validasiBarisStok(barisMentah, produkAda) {
+  const petaSku = new Map(
+    (produkAda || []).map((p) => [String(p.sku || '').toLowerCase(), p]),
+  )
+  return barisMentah.map((m) => {
+    const galat = []
+    const sku = String(m.sku || '').trim()
+    const stokMentah = String(m.stok ?? '').trim()
+    const p = sku ? petaSku.get(sku.toLowerCase()) : null
+    if (!sku) galat.push('SKU wajib diisi')
+    else if (!p) galat.push('SKU tidak ditemukan di master produk')
+    if (!stokMentah) galat.push('Stok fisik wajib diisi')
+    const stok = keAngka(m.stok)
+    if (stokMentah && (!Number.isFinite(stok) || stok < 0)) {
+      galat.push('Stok fisik harus angka 0 atau lebih')
+    }
+    const ok = galat.length === 0
+    const stokBaru = Math.round(stok)
+    return {
+      no: m.no,
+      mentah: m,
+      ok,
+      galat,
+      tetap: ok && p ? stokBaru === p.stok : false,
+      data: p
+        ? {
+            produkId: p.id,
+            nama: p.nama,
+            satuan: p.satuan,
+            stokLama: p.stok,
+            stokBaru,
+          }
+        : null,
+    }
+  })
+}
+
 /* ---------------------------- Parser CSV ------------------------------- */
 
 /** Pecah satu baris CSV dengan pemisah tertentu, hormati tanda kutip */
@@ -89,7 +146,7 @@ const ALIAS = {
   satuan: ['satuan'],
   hargaBeli: ['harga beli', 'modal', 'harga modal'],
   hargaJual: ['harga jual', 'harga'],
-  stok: ['stok', 'stok awal', 'qty', 'jumlah'],
+  stok: ['stok', 'stok awal', 'stok fisik', 'stok baru', 'fisik', 'qty', 'jumlah'],
   stokMin: ['stok min', 'stok minimum', 'minimum', 'min'],
   aktif: ['status', 'aktif', 'dijual'],
 }

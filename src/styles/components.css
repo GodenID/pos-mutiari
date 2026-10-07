@@ -2079,6 +2079,38 @@ th.urut .panah {
   flex-wrap: wrap;
 }
 
+.alat-baris > .saring-kat {
+  width: auto;
+}
+
+@media (max-width: 720px) {
+  .alat-baris > .isi {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .alat-baris > .saring-kat {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .alat-baris > .segmen {
+    flex: 2 1 auto;
+    overflow-x: auto;
+  }
+
+  .alat-baris > .row.kanan {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  .alat-baris > .row.kanan .btn {
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
+  }
+}
+
 .periode-kotak {
   display: flex;
   align-items: center;

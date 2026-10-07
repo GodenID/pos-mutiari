@@ -27,6 +27,7 @@ import { nilaiPersediaan, statusStok } from '../lib/analitik.js'
 import { angka, jam, rupiah, rupiahSingkat, tanggal, tanggalJam } from '../lib/format.js'
 import { stempelFile } from '../lib/csv.js'
 import { unduhXls } from '../lib/xls.js'
+import { bacaFileProduk, unduhTemplateStok, validasiBarisStok } from '../lib/impor.js'
 
 const PER_HALAMAN = 12
 
@@ -92,6 +93,7 @@ function TabPersediaan() {
   const [halaman, setHalaman] = useState(1)
   const [mutasiUntuk, setMutasiUntuk] = useState(null)
   const [opnameBuka, setOpnameBuka] = useState(false)
+  const [imporBuka, setImporBuka] = useState(false)
 
   const persediaan = useMemo(() => nilaiPersediaan(produk), [produk])
 
@@ -230,11 +232,9 @@ function TabPersediaan() {
             }}
             placeholder="Cari produk…"
             className="isi"
-            style={{ minWidth: 180 }}
           />
           <select
-            className="sel"
-            style={{ width: 'auto', minWidth: 150 }}
+            className="sel saring-kat"
             value={katPilih}
             onChange={(e) => {
               setKatPilih(e.target.value)
@@ -266,6 +266,10 @@ function TabPersediaan() {
             <button type="button" className="btn" onClick={eksporXls}>
               <Icon nama="unduh" ukuran={15} />
               <span className="hanya-desktop">Ekspor</span>
+            </button>
+            <button type="button" className="btn" onClick={() => setImporBuka(true)}>
+              <Icon nama="masuk" ukuran={15} />
+              <span className="hanya-desktop">Impor</span>
             </button>
             <button
               type="button"
@@ -426,6 +430,7 @@ function TabPersediaan() {
       />
 
       <ModalOpname buka={opnameBuka} tutup={() => setOpnameBuka(false)} />
+      {imporBuka ? <ModalImporStok tutup={() => setImporBuka(false)} /> : null}
     </>
   )
 }
@@ -577,6 +582,182 @@ function ModalMutasi({ data, tutup, onSimpan }) {
               placeholder="mis. PO-20260916 / Toko Grosir Amanah"
             />
           </Bidang>
+        ) : null}
+      </div>
+    </Modal>
+  )
+}
+
+/* ---------------------------- Impor stok --------------------------------- */
+
+const BATAS_PRATINJAU_STOK = 100
+
+function ModalImporStok({ tutup }) {
+  const { produk } = useStatus()
+  const aksi = useAksi()
+  const toast = useToast()
+
+  const [namaBerkas, setNamaBerkas] = useState('')
+  const [baris, setBaris] = useState(null)
+  const [galatFile, setGalatFile] = useState('')
+  const [membaca, setMembaca] = useState(false)
+  const [menerapkan, setMenerapkan] = useState(false)
+
+  async function pilih(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setMembaca(true)
+    setGalatFile('')
+    setBaris(null)
+    const hasil = await bacaFileProduk(file)
+    setMembaca(false)
+    if (!hasil.ok) {
+      setGalatFile(hasil.galat)
+      return
+    }
+    setNamaBerkas(file.name)
+    setBaris(validasiBarisStok(hasil.baris, produk))
+  }
+
+  const valid = (baris || []).filter((b) => b.ok && !b.tetap)
+  const tetap = (baris || []).filter((b) => b.ok && b.tetap)
+  const bermasalah = (baris || []).filter((b) => !b.ok)
+
+  async function terapkan() {
+    if (!valid.length || menerapkan) return
+    setMenerapkan(true)
+    try {
+      const jumlah = await aksi.opnameStok(
+        valid.map((b) => ({ produkId: b.data.produkId, stokBaru: b.data.stokBaru })),
+        'Impor stok',
+      )
+      toast.sukses(
+        `${angka(jumlah)} produk disesuaikan lewat impor stok` +
+          (tetap.length ? ` — ${angka(tetap.length)} sudah sama` : '') +
+          (bermasalah.length ? ` — ${angka(bermasalah.length)} baris dilewati` : ''),
+      )
+      tutup()
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal menerapkan impor stok')
+    } finally {
+      setMenerapkan(false)
+    }
+  }
+
+  return (
+    <Modal
+      buka
+      tutup={tutup}
+      judul="Impor Stok"
+      keterangan="Unggah CSV atau Excel (.csv, .xls, .xlsx) — maksimal 2.000 baris, diterapkan sebagai stok opname"
+      ukuran="md"
+      kaki={
+        <>
+          <span className="xs muted isi">
+            {baris
+              ? `${angka(valid.length)} diubah • ${angka(tetap.length)} tetap • ${angka(bermasalah.length)} bermasalah`
+              : 'Belum ada berkas dipilih'}
+          </span>
+          <button type="button" className="btn" onClick={tutup}>
+            Batal
+          </button>
+          <button
+            type="button"
+            className="btn btn-primer"
+            onClick={terapkan}
+            disabled={!valid.length || menerapkan}
+          >
+            <Icon nama="simpan" ukuran={15} />
+            {menerapkan ? 'Menerapkan…' : `Terapkan ${angka(valid.length)}`}
+          </button>
+        </>
+      }
+    >
+      <div className="col g12">
+        <div className="row g6 wrap">
+          <span className="xs muted">Belum punya formatnya?</span>
+          <button type="button" className="btn btn-sm" onClick={() => unduhTemplateStok()}>
+            <Icon nama="unduh" ukuran={13} />
+            Template Excel
+          </button>
+        </div>
+
+        <label className="btn btn-blok" style={{ height: 44 }}>
+          <Icon nama="masuk" ukuran={15} />
+          {membaca ? 'Membaca berkas…' : namaBerkas || 'Pilih berkas CSV / Excel'}
+          <input
+            type="file"
+            className="sr-only"
+            accept=".csv,.xls,.xlsx"
+            onChange={pilih}
+            disabled={membaca}
+          />
+        </label>
+
+        {galatFile ? (
+          <div className="info-box info-box-merah" role="alert">
+            <Icon nama="peringatan" ukuran={16} />
+            <span>{galatFile}</span>
+          </div>
+        ) : null}
+
+        {baris ? (
+          <div className="tabel-bungkus" style={{ maxHeight: 320, overflowY: 'auto' }}>
+            <table className="tabel">
+              <thead>
+                <tr>
+                  <th title="Nomor baris di berkas">Brs</th>
+                  <th>Produk</th>
+                  <th className="kanan-teks">Stok sekarang</th>
+                  <th className="kanan-teks">Stok fisik</th>
+                  <th className="kanan-teks">Selisih</th>
+                  <th>Hasil</th>
+                </tr>
+              </thead>
+              <tbody>
+                {baris.slice(0, BATAS_PRATINJAU_STOK).map((b) => {
+                  const selisih = b.data ? b.data.stokBaru - b.data.stokLama : 0
+                  return (
+                    <tr key={b.no}>
+                      <td className="num muted">{b.no}</td>
+                      <td>
+                        <div className="sel-utama">
+                          {b.data?.nama || <span className="tersier">—</span>}
+                        </div>
+                        <div className="sel-sub num">{b.mentah.sku || 'tanpa SKU'}</div>
+                      </td>
+                      <td className="kanan-teks num">
+                        {b.data ? `${angka(b.data.stokLama)} ${b.data.satuan}` : '—'}
+                      </td>
+                      <td className="kanan-teks num">
+                        {b.data ? `${angka(b.data.stokBaru)} ${b.data.satuan}` : '—'}
+                      </td>
+                      <td className={`kanan-teks num ${selisih > 0 ? 'naik' : selisih < 0 ? 'turun' : 'muted'}`}>
+                        {b.data ? `${selisih > 0 ? '+' : ''}${angka(selisih)}` : '—'}
+                      </td>
+                      <td>
+                        {!b.ok ? (
+                          <span className="xs" style={{ color: 'var(--danger)' }}>
+                            {b.galat.join('; ')}
+                          </span>
+                        ) : b.tetap ? (
+                          <Lencana warna="netral">Tetap</Lencana>
+                        ) : (
+                          <Lencana warna="hijau">Diubah</Lencana>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            {baris.length > BATAS_PRATINJAU_STOK ? (
+              <p className="xs muted" style={{ padding: '8px 12px' }}>
+                Menampilkan {BATAS_PRATINJAU_STOK} dari {angka(baris.length)} baris — semuanya tetap diproses.
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </Modal>
