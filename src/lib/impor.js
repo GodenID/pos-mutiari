@@ -140,7 +140,7 @@ export function parseCsvTeks(teks) {
 /* ------------------------- Pemetaan kolom ------------------------------ */
 
 const ALIAS = {
-  sku: ['sku', 'barcode', 'kode', 'kode barang', 'sku/barcode'],
+  sku: ['sku', 'barcode', 'kode', 'kode barang', 'sku/barcode', 'barcode/sku'],
   nama: ['nama', 'nama produk', 'nama barang'],
   kategori: ['kategori'],
   satuan: ['satuan'],

@@ -694,6 +694,10 @@ function ModalImporStok({ tutup }) {
             disabled={membaca}
           />
         </label>
+        <p className="xs muted">
+          Tips cepat: klik <b>Ekspor</b> di toolbar, ubah kolom Stok di file itu,
+          lalu upload lagi di sini — nggak perlu ketik SKU satu per satu.
+        </p>
 
         {galatFile ? (
           <div className="info-box info-box-merah" role="alert">
