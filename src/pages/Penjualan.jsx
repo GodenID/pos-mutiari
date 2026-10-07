@@ -119,13 +119,14 @@ export default function Penjualan() {
 
   const eksporXls = async () => {
     try {
+      const namaItem = (t) => t.item.map((it) => `${it.nama} ×${it.qty}`).join(', ')
       const rekap = tersaring.map((t) => [
         t.nomor,
         tanggal(t.tanggal),
         jam(t.tanggal),
         t.kasir,
         t.pelanggan || '-',
-        t.item.length,
+        namaItem(t),
         t.item.reduce((a, b) => a + b.qty, 0),
         t.subtotal + (t.diskonItem || 0),
         t.diskonItem || 0,
@@ -140,6 +141,26 @@ export default function Penjualan() {
         t.kembalian,
         t.status === 'void' ? 'Dibatalkan' : 'Selesai',
       ])
+      const jumlahkan = (fn) => tersaring.reduce((a, t) => a + fn(t), 0)
+      const grandRekap = [
+        'GRAND TOTAL',
+        '',
+        '',
+        '',
+        '',
+        `${tersaring.length} nota`,
+        jumlahkan((t) => t.item.reduce((a, b) => a + b.qty, 0)),
+        jumlahkan((t) => t.subtotal + (t.diskonItem || 0)),
+        jumlahkan((t) => t.diskonItem || 0),
+        jumlahkan((t) => t.diskon || 0),
+        jumlahkan((t) => t.pajak || 0),
+        jumlahkan((t) => t.total),
+        '',
+        '',
+        jumlahkan((t) => t.bayar),
+        jumlahkan((t) => t.kembalian),
+        '',
+      ]
       const rincian = []
       tersaring.forEach((t) => {
         t.item.forEach((it) => {
@@ -160,6 +181,21 @@ export default function Penjualan() {
           ])
         })
       })
+      const grandRincian = [
+        'GRAND TOTAL',
+        '',
+        '',
+        '',
+        '',
+        '',
+        `${rincian.length} baris`,
+        '',
+        rincian.reduce((a, b) => a + b[8], 0),
+        '',
+        '',
+        rincian.reduce((a, b) => a + b[11], 0),
+        '',
+      ]
       await unduhXlsMulti(`penjualan_${stempelFile()}`, [
         {
           nama: 'Rekap Nota',
@@ -169,7 +205,7 @@ export default function Penjualan() {
             'Jam',
             'Kasir',
             'Pelanggan',
-            'Jenis Item',
+            'Nama Item',
             'Total Qty',
             'Subtotal',
             'Diskon Item',
@@ -183,6 +219,8 @@ export default function Penjualan() {
             'Status',
           ],
           baris: rekap,
+          rupiah: [7, 8, 9, 10, 11, 14, 15],
+          totalBaris: grandRekap,
           meta: [
             `Laporan Penjualan — ${rentang.label}`,
             `${tersaring.length} transaksi • omzet ${rupiah(r.omzet)}`,
@@ -207,6 +245,8 @@ export default function Penjualan() {
             'Status',
           ],
           baris: rincian,
+          rupiah: [9, 10, 11],
+          totalBaris: grandRincian,
           meta: [
             `Rincian Item Terjual — ${rentang.label}`,
             `${rincian.length} baris dari ${tersaring.length} transaksi`,

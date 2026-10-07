@@ -18,7 +18,7 @@ const tepi = {
   right: { style: 'thin', color: { argb: GARIS } },
 }
 
-function tulisSheet(sheet, { kolom = [], baris = [], meta = [] }) {
+function tulisSheet(sheet, { kolom = [], baris = [], meta = [], rupiah = [], totalBaris = null }) {
   const nKolom = Math.max(kolom.length, 1)
 
   let r = 1
@@ -58,13 +58,33 @@ function tulisSheet(sheet, { kolom = [], baris = [], meta = [] }) {
       c.value = nilai ?? ''
       c.border = tepi
       c.alignment = { vertical: 'middle' }
-      if (typeof nilai === 'number') c.numFmt = '#,##0'
+      if (typeof nilai === 'number') {
+        c.numFmt = rupiah.includes(i) ? '"Rp"#,##0' : '#,##0'
+      }
       if (idx % 2 === 1) {
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ABU } }
       }
     })
     r += 1
   })
+
+  if (Array.isArray(totalBaris)) {
+    totalBaris.forEach((nilai, i) => {
+      const c = sheet.getCell(r, i + 1)
+      c.value = nilai ?? ''
+      c.font = { size: 11, bold: true }
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9EAD3' } }
+      c.border = {
+        ...tepi,
+        top: { style: 'medium', color: { argb: GARIS } },
+      }
+      c.alignment = { vertical: 'middle' }
+      if (typeof nilai === 'number') {
+        c.numFmt = rupiah.includes(i) ? '"Rp"#,##0' : '#,##0'
+      }
+    })
+    r += 1
+  }
 
   // Lebar kolom mengikuti isi (12–50)
   kolom.forEach((judulKolom, i) => {
