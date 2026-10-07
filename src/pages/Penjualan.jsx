@@ -119,7 +119,7 @@ export default function Penjualan() {
 
   const eksporXls = async () => {
     try {
-      const namaItem = (t) => t.item.map((it) => `${it.nama} ×${it.qty}`).join(', ')
+      const namaItem = (t) => t.item.map((it) => it.nama).join(', ')
       const rekap = tersaring.map((t) => [
         t.nomor,
         tanggal(t.tanggal),
