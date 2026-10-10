@@ -17,7 +17,7 @@ import {
   Segmen,
 } from '../components/UI.jsx'
 import { useAksi, useSesi, useStatus, useToast } from '../store/konteks.js'
-import { API_BASE } from '../lib/api.js'
+import { API_BASE, api } from '../lib/api.js'
 import { PENGATURAN_AWAL } from '../data/seed.js'
 import { labelPeran } from '../lib/auth.js'
 import { angka, rupiah, tanggalJam } from '../lib/format.js'
@@ -322,6 +322,14 @@ export default function Pengaturan() {
           </Kartu>
 
           <Kartu
+            judul="Notifikasi Email Transaksi"
+            ikon="surat"
+            sub="Setiap transaksi selesai otomatis terkirim ke 2 email via Resend"
+          >
+            <KartuEmailNotif form={form} ubah={ubah} />
+          </Kartu>
+
+          <Kartu
             judul="Integrasi Akuntansi"
             ikon="transfer"
             sub="Kirim faktur penjualan ke pembukuan tanpa input ulang"
@@ -537,6 +545,79 @@ export default function Pengaturan() {
           </Bidang>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+/* ------------------------- Notifikasi email -------------------------- */
+
+function KartuEmailNotif({ form, ubah }) {
+  const toast = useToast()
+  const [sibukTes, setSibukTes] = useState(false)
+
+  const tesKirim = async () => {
+    setSibukTes(true)
+    try {
+      const hasil = await api.tesEmailNotif()
+      toast.sukses(`Email tes terkirim ke ${(hasil.ke || []).join(', ')}`)
+    } catch (e) {
+      toast.galat(e?.message || 'Gagal kirim email tes')
+    } finally {
+      setSibukTes(false)
+    }
+  }
+
+  return (
+    <div className="col g14">
+      <Sakelar
+        label="Kirim email tiap transaksi selesai"
+        keterangan="Mati = kasir tetap jalan, tapi tidak ada email keluar"
+        checked={form.emailNotifAktif !== false}
+        onChange={ubah('emailNotifAktif')}
+      />
+      <div className="form-grid">
+        <Bidang label="Email penerima 1" penuh petunjuk="mis. owner@tokomu.com">
+          <input
+            className="inp"
+            type="email"
+            value={form.emailNotif1 || ''}
+            onChange={(e) => ubah('emailNotif1')(e.target.value)}
+            placeholder="email-pertama@contoh.com"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </Bidang>
+        <Bidang label="Email penerima 2" penuh petunjuk="mis. kasir@tokomu.com">
+          <input
+            className="inp"
+            type="email"
+            value={form.emailNotif2 || ''}
+            onChange={(e) => ubah('emailNotif2')(e.target.value)}
+            placeholder="email-kedua@contoh.com"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </Bidang>
+      </div>
+      <div className="info-box info-box-netral">
+        <Icon nama="info" ukuran={16} />
+        <span>
+          Pengirim dikirim via <b>Resend</b> (diatur di server: RESEND_API_KEY &amp;
+          EMAIL_FROM). Klik <b>Simpan Perubahan</b> di atas dulu, lalu tes kirim.
+          Catatan: paket gratis Resend wajib verifikasi domain — selama belum
+          verifikasi, pakai email pemilik akun Resend sebagai penerima tes.
+        </span>
+      </div>
+      <div className="row g6">
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={tesKirim}
+          disabled={sibukTes || !(form.emailNotif1 || form.emailNotif2)}
+        >
+          {sibukTes ? 'Mengirim…' : 'Kirim email tes'}
+        </button>
+      </div>
     </div>
   )
 }

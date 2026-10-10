@@ -104,6 +104,7 @@ export const api = {
 
   ambilPengaturan: () => get('/api/pengaturan'),
   simpanPengaturan: (d) => put('/api/pengaturan', d),
+  tesEmailNotif: () => post('/api/pengaturan/test-email', {}),
 
   // Admin
   kosongkanData: () => post('/api/admin/reset', {}),

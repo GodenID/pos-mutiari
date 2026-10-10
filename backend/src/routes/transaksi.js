@@ -5,6 +5,7 @@ import { authRequired } from '../auth.js'
 import { akhirHari, awalHari, nomorInvoice } from '../lib/angka.js'
 import { namaKasirOperasional } from '../lib/kasir.js'
 import { stokAktif } from '../lib/fitur.js'
+import { kirimNotifTransaksi } from '../lib/email.js'
 
 const app = new Hono()
 app.use('*', authRequired)
@@ -212,10 +213,13 @@ app.post('/', async (c) => {
 
   try {
     const transaksi = await buatSatu(hitungHariIni + 1)
+    // Kirim notifikasi email ke 2 alamat (fire-and-forget — kasir tidak menunggu)
+    kirimNotifTransaksi(db, transaksi).catch(() => null)
     return c.json({ transaksi }, 201)
   } catch (e) {
     if (String(e?.code) === 'P2002') {
       const transaksi = await buatSatu(hitungHariIni + 1 + Math.floor(Math.random() * 50) + 1)
+      kirimNotifTransaksi(db, transaksi).catch(() => null)
       return c.json({ transaksi }, 201)
     }
     if (String(e?.message || '').startsWith('Stok ')) {

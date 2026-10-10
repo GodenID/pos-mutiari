@@ -169,6 +169,9 @@ export const PENGATURAN_AWAL = {
   bunyiPindai: true,
   cetakOtomatis: false,
   stokAktif: true,
+  emailNotifAktif: true,
+  emailNotif1: '',
+  emailNotif2: '',
   /* Kredensial integrasi akuntansi — rahasia idealnya pindah ke backend */
   integrasi: {
     accurate: { clientId: '', clientSecret: '', redirectUri: '', dbId: '' },
